@@ -41,7 +41,7 @@ namespace ScratchFiles.Commands
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
 
-            string filePath = ScratchFileService.CreateScratchFile(ScratchScope.Global);
+            string filePath = await ScratchFileService.CreateScratchFileAsync(ScratchScope.Global);
             DocumentView docView = await VS.Documents.OpenAsync(filePath);
 
             if (docView != null)

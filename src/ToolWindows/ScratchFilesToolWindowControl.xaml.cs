@@ -34,7 +34,13 @@ namespace ScratchFiles.ToolWindows
             RootNodes = new ObservableCollection<ScratchNodeBase>();
 
             SetupTreeView();
-            RefreshTree();
+
+            // Defer tree population until after the control is rendered
+            // This frees up the UI thread faster during initial load
+            ThreadHelper.JoinableTaskFactory.StartOnIdle(() =>
+            {
+                RefreshTree();
+            }, VsTaskRunContext.UIThreadIdlePriority).FireAndForget();
 
             // Store handlers for later unsubscription
             _solutionOpenedHandler = (s) => RefreshTree();
@@ -677,44 +683,60 @@ namespace ScratchFiles.ToolWindows
                 return;
             }
 
-            try
+            // Handle file drop
+            if (e.Data.GetDataPresent(typeof(ScratchFileNode)))
             {
-                // Handle file drop
-                if (e.Data.GetDataPresent(typeof(ScratchFileNode)))
+                ScratchFileNode draggedFile = e.Data.GetData(typeof(ScratchFileNode)) as ScratchFileNode;
+
+                if (draggedFile != null)
                 {
-                    ScratchFileNode draggedFile = e.Data.GetData(typeof(ScratchFileNode)) as ScratchFileNode;
+                    string oldPath = draggedFile.FilePath;
 
-                    if (draggedFile != null)
+                    ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
                     {
-                        string oldPath = draggedFile.FilePath;
-                        string newPath = ScratchFileService.MoveScratchFile(oldPath, targetFolder);
-
-                        if (newPath != null)
+                        try
                         {
-                            ScratchFileInfoBar.UpdatePath(oldPath, newPath);
-                            RefreshAll();
+                            string newPath = await ScratchFileService.MoveScratchFileAsync(oldPath, targetFolder);
+
+                            if (newPath != null)
+                            {
+                                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                                ScratchFileInfoBar.UpdatePath(oldPath, newPath);
+                                RefreshAll();
+                            }
                         }
-                    }
-                }
-                // Handle folder drop
-                else if (e.Data.GetDataPresent(typeof(ScratchFolderNode)))
-                {
-                    ScratchFolderNode draggedFolder = e.Data.GetData(typeof(ScratchFolderNode)) as ScratchFolderNode;
-
-                    if (draggedFolder != null)
-                    {
-                        string newPath = ScratchFileService.MoveFolder(draggedFolder.FolderPath, targetFolder);
-
-                        if (newPath != null)
+                        catch (Exception ex)
                         {
-                            RefreshAll();
+                            await ex.LogAsync();
                         }
-                    }
+                    }).FireAndForget();
                 }
             }
-            catch (Exception ex)
+            // Handle folder drop
+            else if (e.Data.GetDataPresent(typeof(ScratchFolderNode)))
             {
-                ex.Log();
+                ScratchFolderNode draggedFolder = e.Data.GetData(typeof(ScratchFolderNode)) as ScratchFolderNode;
+
+                if (draggedFolder != null)
+                {
+                    ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+                    {
+                        try
+                        {
+                            string newPath = await ScratchFileService.MoveFolderAsync(draggedFolder.FolderPath, targetFolder);
+
+                            if (newPath != null)
+                            {
+                                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                                RefreshAll();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            await ex.LogAsync();
+                        }
+                    }).FireAndForget();
+                }
             }
 
             e.Handled = true;

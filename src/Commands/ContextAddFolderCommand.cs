@@ -1,6 +1,7 @@
-﻿using ScratchFiles.Models;
+using ScratchFiles.Models;
 using ScratchFiles.Services;
 using ScratchFiles.ToolWindows;
+using ScratchFiles.UI;
 
 namespace ScratchFiles.Commands
 {
@@ -24,7 +25,7 @@ namespace ScratchFiles.Commands
                 return;
             }
 
-            string name = Microsoft.VisualBasic.Interaction.InputBox(
+            string name = InputDialog.Show(
                 "Enter a name for the new folder:",
                 "Add Folder",
                 "New Folder");
@@ -34,7 +35,7 @@ namespace ScratchFiles.Commands
                 return;
             }
 
-            ScratchFileService.CreateSubFolder(parentFolder, name);
+            await ScratchFileService.CreateSubFolderAsync(parentFolder, name);
             ScratchFilesToolWindowControl.RefreshAll();
         }
 

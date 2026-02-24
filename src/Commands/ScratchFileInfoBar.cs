@@ -229,7 +229,7 @@ namespace ScratchFiles.Commands
             // Save unsaved edits to disk before renaming
             _docView.Document.Save();
 
-            string newPath = ScratchFileService.ChangeExtension(oldPath, extension);
+            string newPath = await ScratchFileService.ChangeExtensionAsync(oldPath, extension);
 
             if (newPath != null && !string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase))
             {
@@ -267,7 +267,7 @@ namespace ScratchFiles.Commands
             // Save unsaved edits to disk before moving
             _docView.Document.Save();
 
-            string newPath = ScratchFileService.MoveToScope(oldPath, targetScope);
+            string newPath = await ScratchFileService.MoveToScopeAsync(oldPath, targetScope);
 
             if (newPath != null)
             {
@@ -328,11 +328,12 @@ namespace ScratchFiles.Commands
 
             if (content == null)
             {
-                // Fallback to disk if buffer is unavailable
-                content = File.ReadAllText(currentPath);
+                // Fallback to disk if buffer is unavailable - do on background thread
+                content = await Task.Run(() => File.ReadAllText(currentPath));
             }
 
-            File.WriteAllText(newPath, content);
+            // Write to new file on background thread
+            await Task.Run(() => File.WriteAllText(newPath, content));
 
             // Open the new file in VS
             await VS.Documents.OpenAsync(newPath);
@@ -340,9 +341,9 @@ namespace ScratchFiles.Commands
             // Detach InfoBar and clean up the old scratch file
             Detach(_filePath);
 
-            if (File.Exists(_filePath) && !string.Equals(_filePath, newPath, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(_filePath, newPath, StringComparison.OrdinalIgnoreCase))
             {
-                ScratchFileService.DeleteScratchFile(_filePath);
+                await ScratchFileService.DeleteScratchFileAsync(_filePath);
             }
 
             ToolWindows.ScratchFilesToolWindowControl.RefreshAll();
@@ -499,7 +500,7 @@ namespace ScratchFiles.Commands
             // Save unsaved edits to disk before renaming
             _docView.Document?.Save();
 
-            string newPath = ScratchFileService.ChangeExtension(oldPath, extension);
+            string newPath = await ScratchFileService.ChangeExtensionAsync(oldPath, extension);
 
             if (newPath != null && !string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase))
             {

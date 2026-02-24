@@ -31,7 +31,7 @@ namespace ScratchFiles.Commands
                 ? ScratchScope.Solution
                 : ScratchScope.Global;
 
-            string filePath = ScratchFileService.CreateScratchFile(scope);
+            string filePath = await ScratchFileService.CreateScratchFileAsync(scope);
             DocumentView docView = await VS.Documents.OpenAsync(filePath);
 
             if (docView != null)

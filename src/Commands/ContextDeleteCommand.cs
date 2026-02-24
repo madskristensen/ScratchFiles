@@ -31,7 +31,7 @@ namespace ScratchFiles.Commands
                 if (await VS.MessageBox.ShowConfirmAsync("Delete Scratch File", $"Delete '{fileNode.Label}'?"))
                 {
                     ScratchFileInfoBar.Detach(fileNode.FilePath);
-                    ScratchFileService.DeleteScratchFile(fileNode.FilePath);
+                    await ScratchFileService.DeleteScratchFileAsync(fileNode.FilePath);
                     ScratchFilesToolWindowControl.RefreshAll();
                 }
             }
@@ -39,7 +39,7 @@ namespace ScratchFiles.Commands
             {
                 if (await VS.MessageBox.ShowConfirmAsync("Delete Folder", $"Delete folder '{folderNode.Label}' and all its contents?"))
                 {
-                    ScratchFileService.DeleteFolder(folderNode.FolderPath);
+                    await ScratchFileService.DeleteFolderAsync(folderNode.FolderPath);
                     ScratchFilesToolWindowControl.RefreshAll();
                 }
             }

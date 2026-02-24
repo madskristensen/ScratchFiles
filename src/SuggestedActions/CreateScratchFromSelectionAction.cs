@@ -51,13 +51,13 @@ namespace ScratchFiles.SuggestedActions
             {
                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
-                string filePath = ScratchFileService.CreateScratchFileWithContent(ScratchScope.Global, _selectedText);
+                string filePath = await ScratchFileService.CreateScratchFileWithContentAsync(ScratchScope.Global, _selectedText);
 
                 string extension = ResolveExtension(_sourceExtension, _selectedText);
 
                 if (extension != null)
                 {
-                    string newPath = ScratchFileService.ChangeExtension(filePath, extension);
+                    string newPath = await ScratchFileService.ChangeExtensionAsync(filePath, extension);
 
                     if (newPath != null)
                     {

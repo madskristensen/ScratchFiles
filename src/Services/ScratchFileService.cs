@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace ScratchFiles.Services
 {
@@ -545,6 +546,104 @@ namespace ScratchFiles.Services
                 return null;
             }
         }
+
+        #region Async File Operations (UI Thread Safe)
+
+        /// <summary>
+        /// Creates a new scratch file asynchronously, off the UI thread.
+        /// </summary>
+        public static Task<string> CreateScratchFileAsync(ScratchScope scope)
+        {
+            return Task.Run(() => CreateScratchFile(scope));
+        }
+
+        /// <summary>
+        /// Creates a new scratch file with initial content asynchronously, off the UI thread.
+        /// </summary>
+        public static Task<string> CreateScratchFileWithContentAsync(ScratchScope scope, string content)
+        {
+            return Task.Run(() => CreateScratchFileWithContent(scope, content));
+        }
+
+        /// <summary>
+        /// Deletes a scratch file asynchronously, off the UI thread.
+        /// </summary>
+        public static Task<bool> DeleteScratchFileAsync(string filePath)
+        {
+            return Task.Run(() => DeleteScratchFile(filePath));
+        }
+
+        /// <summary>
+        /// Renames a scratch file asynchronously, off the UI thread.
+        /// Returns the new full path, or null if the rename failed.
+        /// </summary>
+        public static Task<string> RenameScratchFileAsync(string oldPath, string newName)
+        {
+            return Task.Run(() => RenameScratchFile(oldPath, newName));
+        }
+
+        /// <summary>
+        /// Changes the file extension asynchronously, off the UI thread.
+        /// Returns the new full path.
+        /// </summary>
+        public static Task<string> ChangeExtensionAsync(string filePath, string newExtension)
+        {
+            return Task.Run(() => ChangeExtension(filePath, newExtension));
+        }
+
+        /// <summary>
+        /// Moves a scratch file to a different folder asynchronously, off the UI thread.
+        /// Returns the new file path, or null if the move failed.
+        /// </summary>
+        public static Task<string> MoveScratchFileAsync(string sourcePath, string destinationFolder)
+        {
+            return Task.Run(() => MoveScratchFile(sourcePath, destinationFolder));
+        }
+
+        /// <summary>
+        /// Moves a scratch file to the other scope asynchronously, off the UI thread.
+        /// Returns the new file path, or null if the move failed.
+        /// </summary>
+        public static Task<string> MoveToScopeAsync(string sourcePath, ScratchScope targetScope)
+        {
+            return Task.Run(() => MoveToScope(sourcePath, targetScope));
+        }
+
+        /// <summary>
+        /// Creates a sub-folder asynchronously, off the UI thread.
+        /// </summary>
+        public static Task<string> CreateSubFolderAsync(string parentFolder, string folderName)
+        {
+            return Task.Run(() => CreateSubFolder(parentFolder, folderName));
+        }
+
+        /// <summary>
+        /// Deletes a folder and all its contents asynchronously, off the UI thread.
+        /// </summary>
+        public static Task<bool> DeleteFolderAsync(string folderPath)
+        {
+            return Task.Run(() => DeleteFolder(folderPath));
+        }
+
+        /// <summary>
+        /// Renames a folder asynchronously, off the UI thread.
+        /// Returns the new folder path, or null if the rename failed.
+        /// </summary>
+        public static Task<string> RenameFolderAsync(string oldPath, string newName)
+        {
+            return Task.Run(() => RenameFolder(oldPath, newName));
+        }
+
+        /// <summary>
+        /// Moves a folder asynchronously, off the UI thread.
+        /// Returns the new folder path, or null if the move failed.
+        /// </summary>
+        public static Task<string> MoveFolderAsync(string sourceFolderPath, string destinationParentFolder)
+        {
+            return Task.Run(() => MoveFolder(sourceFolderPath, destinationParentFolder));
+        }
+
+        #endregion
     }
 
     internal enum ScratchScope

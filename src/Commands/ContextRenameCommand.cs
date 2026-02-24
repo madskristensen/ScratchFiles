@@ -31,15 +31,15 @@ namespace ScratchFiles.Commands
 
             if (target is ScratchFileNode fileNode)
             {
-                RenameFile(fileNode);
+                await RenameFileAsync(fileNode);
             }
             else if (target is ScratchFolderNode folderNode)
             {
-                RenameFolder(folderNode);
+                await RenameFolderAsync(folderNode);
             }
         }
 
-        private static void RenameFile(ScratchFileNode fileNode)
+        private static async Task RenameFileAsync(ScratchFileNode fileNode)
         {
             string currentName = Path.GetFileName(fileNode.FilePath);
 
@@ -51,7 +51,7 @@ namespace ScratchFiles.Commands
             if (!string.IsNullOrWhiteSpace(newName) && !string.Equals(newName, currentName, StringComparison.OrdinalIgnoreCase))
             {
                 string oldPath = fileNode.FilePath;
-                string newPath = ScratchFileService.RenameScratchFile(oldPath, newName);
+                string newPath = await ScratchFileService.RenameScratchFileAsync(oldPath, newName);
 
                 if (newPath != null)
                 {
@@ -61,7 +61,7 @@ namespace ScratchFiles.Commands
             }
         }
 
-        private static void RenameFolder(ScratchFolderNode folderNode)
+        private static async Task RenameFolderAsync(ScratchFolderNode folderNode)
         {
             string currentName = Path.GetFileName(folderNode.FolderPath);
 
@@ -72,7 +72,7 @@ namespace ScratchFiles.Commands
 
             if (!string.IsNullOrWhiteSpace(newName) && !string.Equals(newName, currentName, StringComparison.OrdinalIgnoreCase))
             {
-                string newPath = ScratchFileService.RenameFolder(folderNode.FolderPath, newName);
+                string newPath = await ScratchFileService.RenameFolderAsync(folderNode.FolderPath, newName);
 
                 if (newPath != null)
                 {
