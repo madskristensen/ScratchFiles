@@ -10,7 +10,7 @@ namespace ScratchFiles
     {
         public const string Id = "ScratchFiles.dd6e64bc-b8c3-4848-8295-3357bc88627c";
         public const string Name = "Scratch Files";
-        public const string Description = @"Empty VSIX Project.";
+        public const string Description = @"Quick-access scratch files for notes and code drafts — global or per-solution — with auto language detection.";
         public const string Language = "en-US";
         public const string Version = "1.0.900";
         public const string Author = "Mads Kristensen";
