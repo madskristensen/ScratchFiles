@@ -132,8 +132,8 @@ namespace ScratchFiles.Commands
             if (ScratchFileService.GetSolutionScratchFolderPath() != null)
             {
                 string scopeAction = currentScope == ScratchScope.Solution
-                    ? "Move to Global"
-                    : "Move to Solution";
+                    ? "Move to Global scope"
+                    : "Move to Solution scope";
                 actions.Add(new InfoBarHyperlink(scopeAction, "change_scope"));
             }
 

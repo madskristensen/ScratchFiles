@@ -15,6 +15,7 @@ namespace ScratchFiles.Services
     {
         private const string DefaultPrefix = "scratch";
         private const string ScratchExtension = ".scratch";
+        private const string ShadowExtension = ".unsaved";
         private const string SolutionSubFolder = @".vs\ScratchFiles";
 
         private static readonly Regex _numberPattern = new Regex(@"^(?<prefix>.+?)(?<num>\d+)\..*$", RegexOptions.Compiled);
@@ -246,6 +247,227 @@ namespace ScratchFiles.Services
 
             return ScratchScope.Global;
         }
+
+        #region Shadow File Helpers
+
+        /// <summary>
+        /// Returns the shadow file path for a scratch file (used for session persistence).
+        /// </summary>
+        public static string GetShadowPath(string scratchFilePath)
+        {
+            return scratchFilePath + ShadowExtension;
+        }
+
+        /// <summary>
+        /// Returns the original scratch file path from a shadow file path.
+        /// </summary>
+        public static string GetOriginalPathFromShadow(string shadowFilePath)
+        {
+            if (!IsShadowFile(shadowFilePath))
+            {
+                return shadowFilePath;
+            }
+
+            return shadowFilePath.Substring(0, shadowFilePath.Length - ShadowExtension.Length);
+        }
+
+        /// <summary>
+        /// Determines whether the given file path is a shadow file (.unsaved).
+        /// </summary>
+        public static bool IsShadowFile(string filePath)
+        {
+            return filePath?.EndsWith(ShadowExtension, StringComparison.OrdinalIgnoreCase) == true;
+        }
+
+        /// <summary>
+        /// Gets the display name for a scratch file (strips .unsaved extension if present).
+        /// </summary>
+        public static string GetDisplayName(string filePath)
+        {
+            string fileName = Path.GetFileName(filePath);
+
+            if (IsShadowFile(filePath))
+            {
+                return fileName.Substring(0, fileName.Length - ShadowExtension.Length);
+            }
+
+            return fileName;
+        }
+
+        /// <summary>
+        /// Returns all pending shadow files from the global scratch folder.
+        /// These represent unsaved scratch files from a previous session.
+        /// </summary>
+        public static IReadOnlyList<string> GetPendingShadowFiles()
+        {
+            string globalFolder = GetGlobalScratchFolderPath();
+
+            if (!Directory.Exists(globalFolder))
+            {
+                return Array.Empty<string>();
+            }
+
+            return Directory.GetFiles(globalFolder, "*" + ShadowExtension, SearchOption.AllDirectories);
+        }
+
+        /// <summary>
+        /// Writes content to a shadow file for session persistence.
+        /// </summary>
+        public static void WriteShadowFile(string scratchFilePath, string content)
+        {
+            string shadowPath = GetShadowPath(scratchFilePath);
+            File.WriteAllText(shadowPath, content ?? string.Empty);
+        }
+
+        /// <summary>
+        /// Writes content to a shadow file asynchronously.
+        /// </summary>
+        public static async Task WriteShadowFileAsync(string scratchFilePath, string content)
+        {
+            string shadowPath = GetShadowPath(scratchFilePath);
+            string directory = Path.GetDirectoryName(shadowPath);
+
+            if (!Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            using (var writer = new StreamWriter(shadowPath, append: false))
+            {
+                await writer.WriteAsync(content ?? string.Empty);
+            }
+        }
+
+        /// <summary>
+        /// Reads content from a shadow file.
+        /// </summary>
+        public static string ReadShadowFile(string shadowFilePath)
+        {
+            if (!File.Exists(shadowFilePath))
+            {
+                return null;
+            }
+
+            return File.ReadAllText(shadowFilePath);
+        }
+
+        /// <summary>
+        /// Deletes a shadow file if it exists.
+        /// </summary>
+        public static bool DeleteShadowFile(string scratchFilePath)
+        {
+            string shadowPath = GetShadowPath(scratchFilePath);
+
+            if (File.Exists(shadowPath))
+            {
+                File.Delete(shadowPath);
+                return true;
+            }
+
+            return false;
+        }
+
+        #endregion
+
+        #region Session File Tracking
+
+        private const string SessionFileName = ".session.json";
+
+        /// <summary>
+        /// Gets the path to the session file that tracks open scratch files.
+        /// </summary>
+        public static string GetSessionFilePath()
+        {
+            return Path.Combine(GetGlobalScratchFolderPath(), SessionFileName);
+        }
+
+        /// <summary>
+        /// Gets the list of scratch files that were open in the previous session.
+        /// </summary>
+        public static IReadOnlyList<string> GetSessionFiles()
+        {
+            string sessionPath = GetSessionFilePath();
+
+            if (!File.Exists(sessionPath))
+            {
+                return Array.Empty<string>();
+            }
+
+            try
+            {
+                string json = File.ReadAllText(sessionPath);
+                var session = Newtonsoft.Json.JsonConvert.DeserializeObject<SessionData>(json);
+                return session?.OpenFiles ?? Array.Empty<string>();
+            }
+            catch
+            {
+                return Array.Empty<string>();
+            }
+        }
+
+        /// <summary>
+        /// Saves the list of open scratch files to the session file.
+        /// </summary>
+        public static void SaveSessionFiles(IEnumerable<string> openFiles)
+        {
+            string sessionPath = GetSessionFilePath();
+            string directory = Path.GetDirectoryName(sessionPath);
+
+            if (!Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            var session = new SessionData { OpenFiles = openFiles.ToArray() };
+            string json = Newtonsoft.Json.JsonConvert.SerializeObject(session, Newtonsoft.Json.Formatting.Indented);
+            File.WriteAllText(sessionPath, json);
+        }
+
+        /// <summary>
+        /// Adds a scratch file to the session tracking.
+        /// </summary>
+        public static void AddToSession(string filePath)
+        {
+            var currentFiles = new HashSet<string>(GetSessionFiles(), StringComparer.OrdinalIgnoreCase);
+
+            if (currentFiles.Add(filePath))
+            {
+                SaveSessionFiles(currentFiles);
+            }
+        }
+
+        /// <summary>
+        /// Removes a scratch file from the session tracking.
+        /// </summary>
+        public static void RemoveFromSession(string filePath)
+        {
+            var currentFiles = new HashSet<string>(GetSessionFiles(), StringComparer.OrdinalIgnoreCase);
+
+            if (currentFiles.Remove(filePath))
+            {
+                SaveSessionFiles(currentFiles);
+            }
+        }
+
+        /// <summary>
+        /// Clears all files from the session tracking.
+        /// </summary>
+        public static void ClearSession()
+        {
+            string sessionPath = GetSessionFilePath();
+
+            if (File.Exists(sessionPath))
+            {
+                File.Delete(sessionPath);
+            }
+        }
+
+        private class SessionData
+        {
+            public string[] OpenFiles { get; set; } = Array.Empty<string>();
+        }
+
+        #endregion
 
         private static int GetNextNumber(string folder, string prefix)
         {

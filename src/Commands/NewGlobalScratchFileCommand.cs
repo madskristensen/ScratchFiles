@@ -47,6 +47,15 @@ namespace ScratchFiles.Commands
             if (docView != null)
             {
                 await ScratchFileInfoBar.AttachAsync(docView);
+
+                // Track buffer for auto-save and session persistence
+                if (docView.TextView?.TextBuffer != null)
+                {
+                    ScratchSessionService.TrackDocument(filePath, docView.TextView.TextBuffer);
+                }
+
+                // Mark as dirty to show * indicator (content is auto-saved but appears unsaved)
+                docView.Document?.UpdateDirtyState(isDirty: true, DateTime.Now);
             }
 
             ScratchFilesToolWindowControl.RefreshAndSelect(filePath);

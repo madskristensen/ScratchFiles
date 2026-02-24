@@ -9,6 +9,7 @@ global using Task = System.Threading.Tasks.Task;
 using Microsoft.VisualStudio;
 
 using ScratchFiles.Commands;
+using ScratchFiles.Services;
 using ScratchFiles.ToolWindows;
 
 using System.Runtime.InteropServices;
@@ -35,6 +36,19 @@ namespace ScratchFiles
             await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
             DocumentEventHandler.Initialize();
+
+            // Restore scratch files from previous session (deferred to not block startup)
+            JoinableTaskFactory.StartOnIdle(async () =>
+            {
+                try
+                {
+                    await ScratchSessionService.RestoreSessionAsync();
+                }
+                catch (Exception ex)
+                {
+                    await ex.LogAsync();
+                }
+            }, VsTaskRunContext.UIThreadIdlePriority).FireAndForget();
         }
 
         protected override void Dispose(bool disposing)

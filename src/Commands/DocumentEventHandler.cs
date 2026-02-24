@@ -3,6 +3,7 @@ using System.Threading;
 
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell.Interop;
+using Microsoft.VisualStudio.Text;
 
 using ScratchFiles.Services;
 using ScratchFiles.ToolWindows;
@@ -158,10 +159,7 @@ namespace ScratchFiles.Commands
                     RunningDocumentInfo info = _rdt.GetDocumentInfo(docCookie);
                     string filePath = info.Moniker;
 
-                    // Attach InfoBar when a scratch file is first shown (e.g., reopened from Tool Window)
-                    if (!string.IsNullOrEmpty(filePath)
-                        && ScratchFileService.IsScratchFile(filePath)
-                        && !ScratchFileInfoBar.HasInfoBar(filePath))
+                    if (!string.IsNullOrEmpty(filePath) && ScratchFileService.IsScratchFile(filePath))
                     {
                         ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
                         {
@@ -171,7 +169,19 @@ namespace ScratchFiles.Commands
 
                                 if (docView != null)
                                 {
-                                    await ScratchFileInfoBar.AttachAsync(docView);
+                                    // Attach InfoBar if not already attached
+                                    if (!ScratchFileInfoBar.HasInfoBar(filePath))
+                                    {
+                                        await ScratchFileInfoBar.AttachAsync(docView);
+                                    }
+
+                                    // Always track buffer for session persistence (even if InfoBar was already attached)
+                                    ITextBuffer buffer = docView.TextView?.TextBuffer;
+
+                                    if (buffer != null)
+                                    {
+                                        ScratchSessionService.TrackDocument(filePath, buffer);
+                                    }
                                 }
                             }
                             catch (Exception ex)
@@ -201,7 +211,10 @@ namespace ScratchFiles.Commands
 
                 if (!string.IsNullOrEmpty(filePath) && ScratchFileService.IsScratchFile(filePath))
                 {
-                    // Move file I/O off the UI thread
+                    // Untrack the buffer
+                    ScratchSessionService.UntrackDocument(filePath);
+
+                    // Move file I/O off the UI thread for empty file deletion
                     ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
                     {
                         try
