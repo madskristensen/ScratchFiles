@@ -1,0 +1,266 @@
+<Window x:Class="ScratchFiles.UI.LanguagePickerDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vs="clr-namespace:Microsoft.VisualStudio.PlatformUI;assembly=Microsoft.VisualStudio.Shell.15.0"
+        xmlns:imaging="clr-namespace:Microsoft.VisualStudio.Imaging;assembly=Microsoft.VisualStudio.Imaging"
+        xmlns:theming="clr-namespace:Microsoft.VisualStudio.PlatformUI;assembly=Microsoft.VisualStudio.Imaging"
+        xmlns:catalog="clr-namespace:Microsoft.VisualStudio.Imaging;assembly=Microsoft.VisualStudio.ImageCatalog"
+        Title="Select Language"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        Width="420"
+        Height="340"
+        Background="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowBackgroundBrushKey}}"
+        theming:ImageThemingUtilities.ImageBackgroundColor="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowBackgroundColorKey}}"
+        PreviewKeyDown="Window_PreviewKeyDown">
+
+    <Window.Resources>
+
+        <!-- VS-themed button style -->
+        <Style TargetType="Button">
+            <Setter Property="Foreground" Value="{DynamicResource {x:Static vs:EnvironmentColors.SystemButtonTextBrushKey}}"/>
+            <Setter Property="Background" Value="{DynamicResource {x:Static vs:EnvironmentColors.SystemButtonFaceBrushKey}}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowBorderBrushKey}}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="4,4"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background"
+                                        Value="{DynamicResource {x:Static vs:EnvironmentColors.CommandBarMouseOverBackgroundGradientBrushKey}}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush"
+                                        Value="{DynamicResource {x:Static vs:EnvironmentColors.CommandBarBorderBrushKey}}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background"
+                                        Value="{DynamicResource {x:Static vs:EnvironmentColors.CommandBarMouseDownBackgroundGradientBrushKey}}"/>
+                            </Trigger>
+                            <Trigger Property="IsDefault" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush"
+                                        Value="{DynamicResource {x:Static vs:EnvironmentColors.FileTabSelectedBorderBrushKey}}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- VS-themed ListBox item style with left accent border on selection -->
+        <Style x:Key="LanguageItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="BorderThickness" Value="2,0,0,0"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowTextBrushKey}}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background"
+                                        Value="{DynamicResource {x:Static vs:EnvironmentColors.CommandBarSelectedBrushKey}}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush"
+                                        Value="{DynamicResource {x:Static vs:EnvironmentColors.FileTabSelectedBorderBrushKey}}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background"
+                                        Value="{DynamicResource {x:Static vs:EnvironmentColors.CommandBarMouseOverBackgroundGradientBrushKey}}"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected" Value="True"/>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Bd" Property="Background"
+                                        Value="{DynamicResource {x:Static vs:EnvironmentColors.CommandBarHoverOverSelectedBrushKey}}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush"
+                                        Value="{DynamicResource {x:Static vs:EnvironmentColors.FileTabSelectedBorderBrushKey}}"/>
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border BorderBrush="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowBorderBrushKey}}"
+            BorderThickness="1"
+            ClipToBounds="True">
+        <Grid Margin="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Search / type-in area -->
+            <Border Grid.Row="0"
+                    Background="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowBackgroundBrushKey}}"
+                    BorderBrush="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowBorderBrushKey}}"
+                    BorderThickness="0,0,0,1"
+                    Padding="8,6">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0"
+                               Text="Type a file extension or select a language:"
+                               FontSize="12"
+                               Margin="0,0,0,6"
+                               Foreground="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowTextBrushKey}}"/>
+
+                    <!-- Themed search box matching VS Go To All style -->
+                    <Border Grid.Row="1"
+                            Background="{DynamicResource {x:Static vs:EnvironmentColors.SearchBoxBackgroundBrushKey}}"
+                            BorderBrush="{DynamicResource {x:Static vs:EnvironmentColors.SearchBoxBorderBrushKey}}"
+                            BorderThickness="1"
+                            Padding="4,2">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <imaging:CrispImage Grid.Column="0"
+                                                Moniker="{x:Static catalog:KnownMonikers.Search}"
+                                                Width="16" Height="16"
+                                                VerticalAlignment="Center"
+                                                Margin="2,0,6,0"/>
+
+                            <TextBox x:Name="FilterTextBox"
+                                     Grid.Column="1"
+                                     FontSize="14"
+                                     Padding="2"
+                                     BorderThickness="0"
+                                     Background="Transparent"
+                                     Foreground="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowTextBrushKey}}"
+                                     CaretBrush="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowTextBrushKey}}"
+                                     TextChanged="FilterTextBox_TextChanged"/>
+
+                            <TextBlock x:Name="PlaceholderText"
+                                       Grid.Column="1"
+                                       Text="e.g. .cs, json, TypeScript..."
+                                       FontSize="14"
+                                       Padding="2"
+                                       Margin="4,0,0,0"
+                                       VerticalAlignment="Center"
+                                       IsHitTestVisible="False"
+                                       Opacity="0.5"
+                                       Foreground="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowTextBrushKey}}"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Filtered results list -->
+            <ListBox x:Name="ResultsListBox"
+                     Grid.Row="1"
+                     BorderThickness="0"
+                     Background="Transparent"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.CanContentScroll="True"
+                     VirtualizingStackPanel.IsVirtualizing="True"
+                     VirtualizingStackPanel.VirtualizationMode="Recycling"
+                     ItemContainerStyle="{StaticResource LanguageItemStyle}"
+                     MouseDoubleClick="ResultsListBox_MouseDoubleClick"
+                     Margin="0,2,0,0">
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="4,1,0,1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <imaging:CrispImage Grid.Column="0"
+                                                Moniker="{Binding IconMoniker, Mode=OneTime}"
+                                                Width="16" Height="16"
+                                                Margin="0,1,8,0"
+                                                VerticalAlignment="Center"/>
+
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding DisplayName, Mode=OneTime}"
+                                       FontSize="13"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowTextBrushKey}}"/>
+
+                            <TextBlock Grid.Column="2"
+                                       Text="{Binding Extension, Mode=OneTime}"
+                                       FontSize="11"
+                                       VerticalAlignment="Center"
+                                       Opacity="0.55"
+                                       Margin="8,0,4,0"
+                                       Foreground="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowTextBrushKey}}"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- Button bar -->
+            <Border Grid.Row="2"
+                    BorderBrush="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowBorderBrushKey}}"
+                    BorderThickness="0,1,0,0"
+                    Padding="8,6">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock x:Name="StatusText"
+                               Grid.Column="0"
+                               FontSize="11"
+                               VerticalAlignment="Center"
+                               Opacity="0.6"
+                               Foreground="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowTextBrushKey}}"/>
+
+                    <Button x:Name="OkButton"
+                            Grid.Column="1"
+                            Content="OK"
+                            Width="80"
+                            Padding="4,4"
+                            Margin="0,0,6,0"
+                            IsDefault="True"
+                            Click="OkButton_Click"/>
+
+                    <Button x:Name="CancelButton"
+                            Grid.Column="2"
+                            Content="Cancel"
+                            Width="80"
+                            Padding="4,4"
+                            IsCancel="True"
+                            Click="CancelButton_Click"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

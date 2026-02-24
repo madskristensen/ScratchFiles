@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json.schemastore.org/vsix-publish",
+  "categories": [ "other" ],
+  "identity": {
+    "internalName": "ScratchFiles",
+    "tags": [ "scratch", "notes", "temp", "snippet", "notepad" ]
+  },
+  "assetFiles": [
+    {
+      "pathOnDisk": "art/infobar.png",
+      "targetPath": "art/infobar.png"
+    },
+    {
+      "pathOnDisk": "art/language-detection.png",
+      "targetPath": "art/language-detection.png"
+    },
+    {
+      "pathOnDisk": "art/language-selector.png",
+      "targetPath": "art/language-selector.png"
+    },
+    {
+      "pathOnDisk": "art/toolwindow.png",
+      "targetPath": "art/toolwindow.png"
+    }
+  ],
+  "overview": "README.md",
+  "publisher": "MadsKristensen",
+  "repo": "https://github.com/madskristensen/ScratchFiles"
+}

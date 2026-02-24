@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+	<Extern href="stdidcmd.h"/>
+	<Extern href="vsshlids.h"/>
+	<Include href="KnownImageIds.vsct"/>
+	<Include href="VSGlobals.vsct"/>
+
+	<Commands package="ScratchFiles">
+
+		<!-- Menus / Toolbars -->
+		<Menus>
+			<!-- Tool window toolbar -->
+			<Menu guid="ScratchFiles" id="ToolWindowToolbar" type="ToolWindowToolbar">
+				<Strings>
+					<ButtonText>Scratch Files Toolbar</ButtonText>
+				</Strings>
+			</Menu>
+		</Menus>
+
+		<Groups>
+			<!-- File menu group for New Scratch File -->
+			<Group guid="ScratchFiles" id="FileMenuGroup" priority="0x0200">
+				<Parent guid="VSMainMenu" id="File.NewGroup.Submenu"/>
+			</Group>
+
+			<!-- View > Other Windows group -->
+			<Group guid="ScratchFiles" id="ViewMenuGroup" priority="0x0100">
+				<Parent guid="VSMainMenu" id="View.DevWindowsGroup.OtherWindows.Group1"/>
+			</Group>
+
+			<!-- Solution node context menu group -->
+			<Group guid="ScratchFiles" id="SolutionContextMenuGroup" priority="0x0800">
+				<Parent guid="guidSHLMainMenu" id="IDM_VS_CTXT_SOLNNODE"/>
+			</Group>
+
+			<!-- Tool window toolbar groups -->
+			<Group guid="ScratchFiles" id="ToolWindowToolbarNewGroup" priority="0x0100">
+				<Parent guid="ScratchFiles" id="ToolWindowToolbar"/>
+			</Group>
+			<Group guid="ScratchFiles" id="ToolWindowToolbarActionsGroup" priority="0x0200">
+				<Parent guid="ScratchFiles" id="ToolWindowToolbar"/>
+			</Group>
+
+			<!-- Tool window tree view context menu -->
+			<Group guid="ScratchFiles" id="TreeContextMenuGroup" priority="0x0100">
+				<Parent guid="ScratchFiles" id="TreeContextMenu"/>
+			</Group>
+			<Group guid="ScratchFiles" id="TreeContextMenuDeleteGroup" priority="0x0200">
+				<Parent guid="ScratchFiles" id="TreeContextMenu"/>
+			</Group>
+		</Groups>
+
+		<Menus>
+			<!-- Tree view context menu -->
+			<Menu guid="ScratchFiles" id="TreeContextMenu" type="Context">
+				<Strings>
+					<ButtonText>Scratch File Context Menu</ButtonText>
+				</Strings>
+			</Menu>
+		</Menus>
+
+		<Buttons>
+			<!-- New Global Scratch File (Ctrl+N intercept handled in code) -->
+			<Button guid="ScratchFiles" id="NewGlobalScratchFile" priority="0x0100" type="Button">
+				<Parent guid="ScratchFiles" id="FileMenuGroup"/>
+				<Icon guid="ImageCatalogGuid" id="NewDocument"/>
+				<CommandFlag>IconIsMoniker</CommandFlag>
+				<Strings>
+					<ButtonText>New Scratch File</ButtonText>
+					<LocCanonicalName>.ScratchFiles.NewGlobalScratchFile</LocCanonicalName>
+				</Strings>
+			</Button>
+
+			<!-- New Solution Scratch File (Ctrl+Alt+N) -->
+			<Button guid="ScratchFiles" id="NewSolutionScratchFile" priority="0x0100" type="Button">
+				<Parent guid="ScratchFiles" id="SolutionContextMenuGroup"/>
+				<Icon guid="ImageCatalogGuid" id="NewDocument"/>
+				<CommandFlag>IconIsMoniker</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>New Scratch File</ButtonText>
+					<LocCanonicalName>.ScratchFiles.NewSolutionScratchFile</LocCanonicalName>
+				</Strings>
+			</Button>
+
+			<!-- Show Scratch Files Tool Window -->
+			<Button guid="ScratchFiles" id="ShowToolWindow" priority="0x0100" type="Button">
+				<Parent guid="VSMainMenu" id="View.DevWindowsGroup.OtherWindows.Group1"/>
+				<Icon guid="ImageCatalogGuid" id="DocumentGroup"/>
+				<CommandFlag>IconIsMoniker</CommandFlag>
+				<Strings>
+					<ButtonText>Scratch Files</ButtonText>
+					<LocCanonicalName>.ScratchFiles.ShowToolWindow</LocCanonicalName>
+				</Strings>
+			</Button>
+
+			<!-- Toolbar: New Global -->
+			<Button guid="ScratchFiles" id="ToolbarNewGlobal" priority="0x0100" type="Button">
+				<Parent guid="ScratchFiles" id="ToolWindowToolbarNewGroup"/>
+				<Icon guid="ImageCatalogGuid" id="NewDocument"/>
+				<CommandFlag>IconIsMoniker</CommandFlag>
+				<Strings>
+					<ButtonText>New Global Scratch File</ButtonText>
+					<LocCanonicalName>.ScratchFiles.ToolbarNewGlobal</LocCanonicalName>
+				</Strings>
+			</Button>
+
+			<!-- Toolbar: New Solution -->
+			<Button guid="ScratchFiles" id="ToolbarNewSolution" priority="0x0200" type="Button">
+				<Parent guid="ScratchFiles" id="ToolWindowToolbarNewGroup"/>
+				<Icon guid="ImageCatalogGuid" id="AddDocument"/>
+				<CommandFlag>IconIsMoniker</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<Strings>
+					<ButtonText>New Solution Scratch File</ButtonText>
+					<LocCanonicalName>.ScratchFiles.ToolbarNewSolution</LocCanonicalName>
+				</Strings>
+			</Button>
+
+			<!-- Toolbar: Open Folder -->
+			<Button guid="ScratchFiles" id="ToolbarOpenFolder" priority="0x0100" type="Button">
+				<Parent guid="ScratchFiles" id="ToolWindowToolbarActionsGroup"/>
+				<Icon guid="ImageCatalogGuid" id="OpenFolder"/>
+				<CommandFlag>IconIsMoniker</CommandFlag>
+				<Strings>
+					<ButtonText>Open Scratch Folder</ButtonText>
+					<LocCanonicalName>.ScratchFiles.ToolbarOpenFolder</LocCanonicalName>
+				</Strings>
+			</Button>
+
+			<!-- Context menu: Open -->
+			<Button guid="ScratchFiles" id="ContextOpen" priority="0x0100" type="Button">
+				<Parent guid="ScratchFiles" id="TreeContextMenuGroup"/>
+				<Icon guid="ImageCatalogGuid" id="StatusInformation"/>
+				<CommandFlag>IconIsMoniker</CommandFlag>
+				<Strings>
+					<ButtonText>Open</ButtonText>
+					<LocCanonicalName>.ScratchFiles.ContextOpen</LocCanonicalName>
+				</Strings>
+			</Button>
+
+			<!-- Context menu: Rename -->
+			<Button guid="ScratchFiles" id="ContextRename" priority="0x0200" type="Button">
+				<Parent guid="ScratchFiles" id="TreeContextMenuGroup"/>
+				<Icon guid="ImageCatalogGuid" id="Rename"/>
+				<CommandFlag>IconIsMoniker</CommandFlag>
+				<Strings>
+					<ButtonText>Rename</ButtonText>
+					<LocCanonicalName>.ScratchFiles.ContextRename</LocCanonicalName>
+				</Strings>
+			</Button>
+
+			<!-- Context menu: Delete -->
+			<Button guid="ScratchFiles" id="ContextDelete" priority="0x0100" type="Button">
+				<Parent guid="ScratchFiles" id="TreeContextMenuDeleteGroup"/>
+				<Icon guid="ImageCatalogGuid" id="Cancel"/>
+				<CommandFlag>IconIsMoniker</CommandFlag>
+				<Strings>
+					<ButtonText>Delete</ButtonText>
+					<LocCanonicalName>.ScratchFiles.ContextDelete</LocCanonicalName>
+				</Strings>
+			</Button>
+
+			<!-- Context menu: Open Containing Folder -->
+			<Button guid="ScratchFiles" id="ContextOpenFolder" priority="0x0200" type="Button">
+				<Parent guid="ScratchFiles" id="TreeContextMenuDeleteGroup"/>
+				<Icon guid="ImageCatalogGuid" id="OpenFolder"/>
+				<CommandFlag>IconIsMoniker</CommandFlag>
+				<Strings>
+					<ButtonText>Open Containing Folder</ButtonText>
+					<LocCanonicalName>.ScratchFiles.ContextOpenFolder</LocCanonicalName>
+				</Strings>
+			</Button>
+		</Buttons>
+	</Commands>
+
+	<KeyBindings>
+		<KeyBinding guid="ScratchFiles" id="NewSolutionScratchFile" editor="guidVSStd97" mod1="Control Alt" key1="N"/>
+		<KeyBinding guid="ScratchFiles" id="ContextOpen" editor="ScratchFilesToolWindow" key1="VK_RETURN"/>
+		<KeyBinding guid="ScratchFiles" id="ContextRename" editor="ScratchFilesToolWindow" key1="VK_F2"/>
+		<KeyBinding guid="ScratchFiles" id="ContextDelete" editor="ScratchFilesToolWindow" key1="VK_DELETE"/>
+	</KeyBindings>
+
+	<Symbols>
+		<GuidSymbol name="ScratchFiles" value="{04fc2f76-aec6-4077-aeff-121520f4dcfa}">
+			<!-- Menus -->
+			<IDSymbol name="ToolWindowToolbar" value="0x0010"/>
+			<IDSymbol name="TreeContextMenu" value="0x0011"/>
+
+			<!-- Groups -->
+			<IDSymbol name="FileMenuGroup" value="0x0001"/>
+			<IDSymbol name="ViewMenuGroup" value="0x0002"/>
+			<IDSymbol name="SolutionContextMenuGroup" value="0x0003"/>
+			<IDSymbol name="ToolWindowToolbarNewGroup" value="0x0004"/>
+			<IDSymbol name="ToolWindowToolbarActionsGroup" value="0x0005"/>
+			<IDSymbol name="TreeContextMenuGroup" value="0x0006"/>
+			<IDSymbol name="TreeContextMenuDeleteGroup" value="0x0007"/>
+
+			<!-- Commands -->
+			<IDSymbol name="NewGlobalScratchFile" value="0x0106"/>
+			<IDSymbol name="NewSolutionScratchFile" value="0x0101"/>
+			<IDSymbol name="ShowToolWindow" value="0x0102"/>
+			<IDSymbol name="ToolbarNewGlobal" value="0x0103"/>
+			<IDSymbol name="ToolbarNewSolution" value="0x0104"/>
+			<IDSymbol name="ToolbarOpenFolder" value="0x0105"/>
+			<IDSymbol name="ContextOpen" value="0x0110"/>
+			<IDSymbol name="ContextRename" value="0x0111"/>
+			<IDSymbol name="ContextDelete" value="0x0112"/>
+			<IDSymbol name="ContextOpenFolder" value="0x0113"/>
+		</GuidSymbol>
+			<GuidSymbol name="ScratchFilesToolWindow" value="{a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d}"/>
+		</Symbols>
+	</CommandTable>
