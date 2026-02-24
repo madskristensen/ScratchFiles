@@ -1,20 +1,17 @@
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.ComponentModel.Design;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Input;
-
 using Microsoft.VisualStudio.Imaging;
 using Microsoft.VisualStudio.Shell.Interop;
 
 using ScratchFiles.Commands;
 using ScratchFiles.Models;
 using ScratchFiles.Services;
+
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Input;
 
 namespace ScratchFiles.ToolWindows
 {
@@ -23,6 +20,7 @@ namespace ScratchFiles.ToolWindows
         private static ScratchFilesToolWindowControl _instance;
         private static ScratchNodeBase _rightClickedNode;
         private static ScratchNodeBase _selectedNode;
+        private Point _dragStartPoint;
 
         public ScratchFilesToolWindowControl()
         {
@@ -66,8 +64,8 @@ namespace ScratchFiles.ToolWindows
         }
 
         /// <summary>
-        /// Configures the TreeView data template in code to match the Azure Explorer pattern.
-        /// Uses CrispImage for file extension icons + TextBlock for label + description.
+        /// Configures the TreeView data template in code to match the Azure Explorer pattern. Uses CrispImage for file
+        /// extension icons + TextBlock for label + description.
         /// </summary>
         private void SetupTreeView()
         {
@@ -114,24 +112,23 @@ namespace ScratchFiles.ToolWindows
             ScratchTree.PreviewMouseRightButtonUp += ScratchTree_PreviewMouseRightButtonUp;
             ScratchTree.MouseDoubleClick += ScratchTree_MouseDoubleClick;
             ScratchTree.KeyDown += ScratchTree_KeyDown;
+
+            // Drag-and-drop
+            ScratchTree.AllowDrop = true;
+            ScratchTree.PreviewMouseLeftButtonDown += ScratchTree_PreviewMouseLeftButtonDown;
+            ScratchTree.PreviewMouseMove += ScratchTree_PreviewMouseMove;
+            ScratchTree.DragOver += ScratchTree_DragOver;
+            ScratchTree.Drop += ScratchTree_Drop;
         }
 
         private void RefreshTree()
         {
             RootNodes.Clear();
 
-            IReadOnlyList<ScratchFileInfo> allFiles = ScratchFileService.GetAllScratchFiles();
-            IEnumerable<ScratchFileInfo> globalFiles = allFiles.Where(f => f.Scope == ScratchScope.Global);
-            IEnumerable<ScratchFileInfo> solutionFiles = allFiles.Where(f => f.Scope == ScratchScope.Solution);
-
             // Global group
-            var globalGroup = new ScratchGroupNode("Global", ScratchScope.Global);
-
-            foreach (ScratchFileInfo file in globalFiles)
-            {
-                globalGroup.Children.Add(new ScratchFileNode(file.FilePath, ScratchScope.Global));
-            }
-
+            string globalFolder = ScratchFileService.GetGlobalScratchFolder();
+            var globalGroup = new ScratchGroupNode("Global", ScratchScope.Global, globalFolder);
+            PopulateFolder(globalGroup, globalFolder, ScratchScope.Global);
             RootNodes.Add(globalGroup);
 
             // Solution group (only if a solution is open and has a scratch folder)
@@ -140,20 +137,34 @@ namespace ScratchFiles.ToolWindows
             if (solutionFolder != null)
             {
                 string solutionName = GetSolutionName() ?? "Solution";
-                var solutionGroup = new ScratchGroupNode($"Solution ({solutionName})", ScratchScope.Solution);
-
-                foreach (ScratchFileInfo file in solutionFiles)
-                {
-                    solutionGroup.Children.Add(new ScratchFileNode(file.FilePath, ScratchScope.Solution));
-                }
-
+                var solutionGroup = new ScratchGroupNode($"Solution ({solutionName})", ScratchScope.Solution, solutionFolder);
+                PopulateFolder(solutionGroup, solutionFolder, ScratchScope.Solution);
                 RootNodes.Add(solutionGroup);
             }
 
             // Show/hide empty state
+            IReadOnlyList<ScratchFileInfo> allFiles = ScratchFileService.GetAllScratchFiles();
             bool hasFiles = allFiles.Count > 0;
             ScratchTree.Visibility = hasFiles ? Visibility.Visible : Visibility.Collapsed;
             EmptyStatePanel.Visibility = hasFiles ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        /// <summary>
+        /// Recursively populates a parent node with sub-folders and files from disk.
+        /// </summary>
+        private static void PopulateFolder(ScratchNodeBase parentNode, string folderPath, ScratchScope scope)
+        {
+            foreach (string subDir in ScratchFileService.GetSubFolders(folderPath))
+            {
+                var folderNode = new ScratchFolderNode(subDir, scope);
+                PopulateFolder(folderNode, subDir, scope);
+                parentNode.Children.Add(folderNode);
+            }
+
+            foreach (string file in ScratchFileService.GetFilesInFolder(folderPath))
+            {
+                parentNode.Children.Add(new ScratchFileNode(file, scope));
+            }
         }
 
         private void ScratchTree_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
@@ -178,8 +189,10 @@ namespace ScratchFiles.ToolWindows
 
         private void ScratchTree_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (_rightClickedNode is ScratchFileNode fileNode && fileNode.ContextMenuId != 0)
+            if (_rightClickedNode != null && _rightClickedNode.ContextMenuId != 0)
             {
+                int contextMenuId = _rightClickedNode.ContextMenuId;
+
                 ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
                 {
                     try
@@ -202,7 +215,7 @@ namespace ScratchFiles.ToolWindows
                             };
 
                             Guid cmdGroup = PackageGuids.ScratchFiles;
-                            uiShell.ShowContextMenu(0, ref cmdGroup, fileNode.ContextMenuId, points, null);
+                            uiShell.ShowContextMenu(0, ref cmdGroup, contextMenuId, points, null);
                         }
                     }
                     catch (System.Exception ex)
@@ -293,8 +306,8 @@ namespace ScratchFiles.ToolWindows
         }
 
         /// <summary>
-        /// Moves keyboard focus from the search box into the first visible tree node.
-        /// Called by the Pane when Down arrow is pressed in the search box.
+        /// Moves keyboard focus from the search box into the first visible tree node. Called by the Pane when Down
+        /// arrow is pressed in the search box.
         /// </summary>
         internal void FocusFirstTreeNode()
         {
@@ -395,31 +408,48 @@ namespace ScratchFiles.ToolWindows
 
             foreach (ScratchNodeBase group in RootNodes)
             {
-                if (group is ScratchGroupNode groupNode)
+                bool anyVisible = ApplyFilterRecursive(group, query);
+                group.IsVisible = anyVisible;
+
+                if (anyVisible)
                 {
-                    bool anyVisible = false;
+                    group.IsExpanded = true;
+                }
+            }
+        }
 
-                    foreach (ScratchNodeBase child in groupNode.Children)
+        private static bool ApplyFilterRecursive(ScratchNodeBase node, string query)
+        {
+            bool anyChildVisible = false;
+
+            foreach (ScratchNodeBase child in node.Children)
+            {
+                if (child is ScratchFolderNode)
+                {
+                    bool folderHasMatch = ApplyFilterRecursive(child, query);
+                    child.IsVisible = folderHasMatch;
+
+                    if (folderHasMatch)
                     {
-                        bool matches = child.Label.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0
-                            || (child.Description != null && child.Description.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0);
-
-                        child.IsVisible = matches;
-
-                        if (matches)
-                        {
-                            anyVisible = true;
-                        }
+                        child.IsExpanded = true;
+                        anyChildVisible = true;
                     }
+                }
+                else
+                {
+                    bool matches = child.Label.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0
+                        || (child.Description != null && child.Description.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0);
 
-                    groupNode.IsVisible = anyVisible;
+                    child.IsVisible = matches;
 
-                    if (anyVisible)
+                    if (matches)
                     {
-                        groupNode.IsExpanded = true;
+                        anyChildVisible = true;
                     }
                 }
             }
+
+            return anyChildVisible;
         }
 
         /// <summary>
@@ -429,15 +459,17 @@ namespace ScratchFiles.ToolWindows
         {
             foreach (ScratchNodeBase group in RootNodes)
             {
-                group.IsVisible = true;
+                ClearFilterRecursive(group);
+            }
+        }
 
-                if (group is ScratchGroupNode groupNode)
-                {
-                    foreach (ScratchNodeBase child in groupNode.Children)
-                    {
-                        child.IsVisible = true;
-                    }
-                }
+        private static void ClearFilterRecursive(ScratchNodeBase node)
+        {
+            node.IsVisible = true;
+
+            foreach (ScratchNodeBase child in node.Children)
+            {
+                ClearFilterRecursive(child);
             }
         }
 
@@ -464,5 +496,125 @@ namespace ScratchFiles.ToolWindows
 
             return null;
         }
+
+        #region Drag and Drop
+
+        private void ScratchTree_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _dragStartPoint = e.GetPosition(ScratchTree);
+        }
+
+        private void ScratchTree_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.LeftButton != MouseButtonState.Pressed)
+            {
+                return;
+            }
+
+            Point currentPos = e.GetPosition(ScratchTree);
+            Vector diff = _dragStartPoint - currentPos;
+
+            if (Math.Abs(diff.X) < SystemParameters.MinimumHorizontalDragDistance
+                && Math.Abs(diff.Y) < SystemParameters.MinimumVerticalDragDistance)
+            {
+                return;
+            }
+
+            if (_selectedNode is ScratchFileNode fileNode)
+            {
+                var data = new DataObject(typeof(ScratchFileNode), fileNode);
+                DragDrop.DoDragDrop(ScratchTree, data, DragDropEffects.Move);
+            }
+        }
+
+        private void ScratchTree_DragOver(object sender, DragEventArgs e)
+        {
+            e.Effects = DragDropEffects.None;
+
+            if (!e.Data.GetDataPresent(typeof(ScratchFileNode)))
+            {
+                return;
+            }
+
+            ScratchNodeBase targetNode = GetDropTargetNode(e);
+
+            if (targetNode is ScratchGroupNode || targetNode is ScratchFolderNode)
+            {
+                ScratchFileNode draggedFile = e.Data.GetData(typeof(ScratchFileNode)) as ScratchFileNode;
+                string targetFolder = GetNodeFolderPath(targetNode);
+
+                // Don't allow drop onto the same folder the file is already in
+                if (draggedFile != null && targetFolder != null
+                    && !string.Equals(Path.GetDirectoryName(draggedFile.FilePath), targetFolder, StringComparison.OrdinalIgnoreCase))
+                {
+                    e.Effects = DragDropEffects.Move;
+                }
+            }
+
+            e.Handled = true;
+        }
+
+        private void ScratchTree_Drop(object sender, DragEventArgs e)
+        {
+            if (!e.Data.GetDataPresent(typeof(ScratchFileNode)))
+            {
+                return;
+            }
+
+            ScratchFileNode draggedFile = e.Data.GetData(typeof(ScratchFileNode)) as ScratchFileNode;
+            ScratchNodeBase targetNode = GetDropTargetNode(e);
+            string targetFolder = GetNodeFolderPath(targetNode);
+
+            if (draggedFile == null || targetFolder == null)
+            {
+                return;
+            }
+
+            try
+            {
+                string oldPath = draggedFile.FilePath;
+                string newPath = ScratchFileService.MoveScratchFile(oldPath, targetFolder);
+
+                if (newPath != null)
+                {
+                    ScratchFileInfoBar.UpdatePath(oldPath, newPath);
+                    RefreshAll();
+                }
+            }
+            catch (Exception ex)
+            {
+                ex.Log();
+            }
+
+            e.Handled = true;
+        }
+
+        private ScratchNodeBase GetDropTargetNode(DragEventArgs e)
+        {
+            if (e.OriginalSource is DependencyObject source)
+            {
+                TreeViewItem treeItem = FindAncestor<TreeViewItem>(source);
+                return treeItem?.DataContext as ScratchNodeBase;
+            }
+
+            return null;
+        }
+
+        private static string GetNodeFolderPath(ScratchNodeBase node)
+        {
+            if (node is ScratchGroupNode groupNode)
+            {
+                return groupNode.FolderPath;
+            }
+
+            if (node is ScratchFolderNode folderNode)
+            {
+                return folderNode.FolderPath;
+            }
+
+            return null;
+        }
+
+        #endregion
     }
 }

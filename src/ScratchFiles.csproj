@@ -45,10 +45,12 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Models\ScratchFolderNode.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Commands\ContextOpenCommand.cs" />
     <Compile Include="Commands\ContextRenameCommand.cs" />
     <Compile Include="Commands\ContextDeleteCommand.cs" />
+    <Compile Include="Commands\ContextAddFolderCommand.cs" />
     <Compile Include="Commands\ContextOpenFolderCommand.cs" />
     <Compile Include="Commands\ToolbarNewGlobalCommand.cs" />
     <Compile Include="Commands\ToolbarNewSolutionCommand.cs" />

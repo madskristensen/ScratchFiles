@@ -1,3 +1,5 @@
+﻿using System.IO;
+
 using Microsoft.VisualStudio.Imaging;
 using Microsoft.VisualStudio.Imaging.Interop;
 
@@ -6,21 +8,21 @@ using ScratchFiles.Services;
 namespace ScratchFiles.Models
 {
     /// <summary>
-    /// Represents a root group header node ("Global" or "Solution") in the Scratch Files tree view.
+    /// Represents a user-created sub-folder within a scratch scope directory.
     /// </summary>
-    internal sealed class ScratchGroupNode : ScratchNodeBase
+    internal sealed class ScratchFolderNode : ScratchNodeBase
     {
-        public ScratchGroupNode(string label, ScratchScope scope, string folderPath)
-            : base(label)
+        public ScratchFolderNode(string folderPath, ScratchScope scope)
+            : base(Path.GetFileName(folderPath))
         {
-            Scope = scope;
             FolderPath = folderPath;
+            Scope = scope;
             IsExpanded = true;
         }
 
-        public ScratchScope Scope { get; }
-
         public string FolderPath { get; }
+
+        public ScratchScope Scope { get; }
 
         public override ImageMoniker IconMoniker => KnownMonikers.FolderOpened;
 

@@ -37,6 +37,10 @@ await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
 // NEVER use async void - use async Task
 ```
 
+### Error Logging
+
+When using catch blocks, use `ex.Log()` or `await ex.LogAsync()` as appropriate to log errors. Don't use `Debug.WriteLine`.
+
 ### Core Patterns
 
 | Pattern | Base Class | Example |

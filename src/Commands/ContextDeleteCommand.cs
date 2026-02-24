@@ -5,11 +5,20 @@ using ScratchFiles.ToolWindows;
 namespace ScratchFiles.Commands
 {
     /// <summary>
-    /// Context menu: Delete the selected scratch file.
+    /// Context menu: Delete the selected scratch file or sub-folder.
+    /// Hidden for root group nodes via DynamicVisibility.
     /// </summary>
     [Command(PackageIds.ContextDelete)]
     internal sealed class ContextDeleteCommand : BaseCommand<ContextDeleteCommand>
     {
+        protected override void BeforeQueryStatus(EventArgs e)
+        {
+            ScratchNodeBase target = ScratchFilesToolWindowControl.RightClickedNode
+                ?? ScratchFilesToolWindowControl.SelectedNode;
+
+            Command.Visible = target is ScratchFileNode || target is ScratchFolderNode;
+        }
+
         protected override async Task ExecuteAsync(OleMenuCmdEventArgs e)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
@@ -23,6 +32,14 @@ namespace ScratchFiles.Commands
                 {
                     ScratchFileInfoBar.Detach(fileNode.FilePath);
                     ScratchFileService.DeleteScratchFile(fileNode.FilePath);
+                    ScratchFilesToolWindowControl.RefreshAll();
+                }
+            }
+            else if (target is ScratchFolderNode folderNode)
+            {
+                if (await VS.MessageBox.ShowConfirmAsync("Delete Folder", $"Delete folder '{folderNode.Label}' and all its contents?"))
+                {
+                    ScratchFileService.DeleteFolder(folderNode.FolderPath);
                     ScratchFilesToolWindowControl.RefreshAll();
                 }
             }

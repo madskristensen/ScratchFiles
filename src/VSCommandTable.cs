@@ -27,6 +27,7 @@ namespace ScratchFiles
     {
         public const int ToolWindowToolbar = 0x0010;
         public const int TreeContextMenu = 0x0011;
+        public const int FolderContextMenu = 0x0012;
         public const int FileMenuGroup = 0x0001;
         public const int ViewMenuGroup = 0x0002;
         public const int SolutionContextMenuGroup = 0x0003;
@@ -34,6 +35,9 @@ namespace ScratchFiles
         public const int ToolWindowToolbarActionsGroup = 0x0005;
         public const int TreeContextMenuGroup = 0x0006;
         public const int TreeContextMenuDeleteGroup = 0x0007;
+        public const int FolderContextMenuAddGroup = 0x0008;
+        public const int FolderContextMenuEditGroup = 0x0009;
+        public const int FolderContextMenuOpenGroup = 0x000A;
         public const int NewGlobalScratchFile = 0x0106;
         public const int NewSolutionScratchFile = 0x0101;
         public const int ShowToolWindow = 0x0102;
@@ -44,5 +48,6 @@ namespace ScratchFiles
         public const int ContextRename = 0x0111;
         public const int ContextDelete = 0x0112;
         public const int ContextOpenFolder = 0x0113;
+        public const int ContextAddFolder = 0x0114;
     }
 }

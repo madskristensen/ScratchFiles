@@ -282,6 +282,145 @@ namespace ScratchFiles.Services
             {
                 yield return new ScratchFileInfo(file, scope);
             }
+
+            foreach (string subDir in Directory.GetDirectories(folder).OrderBy(d => d, StringComparer.OrdinalIgnoreCase))
+            {
+                foreach (ScratchFileInfo file in GetFilesFromFolder(subDir, scope))
+                {
+                    yield return file;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Moves a scratch file to a different folder within the scratch roots.
+        /// Returns the new file path, or null if the move failed.
+        /// </summary>
+        public static string MoveScratchFile(string sourcePath, string destinationFolder)
+        {
+            if (!IsScratchFile(sourcePath) || !File.Exists(sourcePath))
+            {
+                return null;
+            }
+
+            Directory.CreateDirectory(destinationFolder);
+
+            string fileName = Path.GetFileName(sourcePath);
+            string destPath = Path.Combine(destinationFolder, fileName);
+
+            // Avoid overwriting an existing file
+            if (File.Exists(destPath))
+            {
+                return null;
+            }
+
+            File.Move(sourcePath, destPath);
+            return destPath;
+        }
+
+        /// <summary>
+        /// Creates a sub-folder inside a scratch folder. Returns the new folder path.
+        /// </summary>
+        public static string CreateSubFolder(string parentFolder, string folderName)
+        {
+            if (parentFolder == null)
+            {
+                throw new ArgumentNullException(nameof(parentFolder));
+            }
+
+            if (folderName == null)
+            {
+                throw new ArgumentNullException(nameof(folderName));
+            }
+
+            string newFolder = Path.Combine(parentFolder, folderName);
+            Directory.CreateDirectory(newFolder);
+            return newFolder;
+        }
+
+        /// <summary>
+        /// Deletes a sub-folder and all its contents if it resides inside a scratch root.
+        /// Returns true if the folder was deleted.
+        /// </summary>
+        public static bool DeleteFolder(string folderPath)
+        {
+            if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+            {
+                return false;
+            }
+
+            // Safety: only delete folders inside a scratch root
+            string fullPath = Path.GetFullPath(folderPath);
+            string globalRoot = GetGlobalScratchFolderPath();
+            string solutionRoot = GetSolutionScratchFolderPath();
+
+            bool insideGlobal = fullPath.StartsWith(globalRoot, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(fullPath, globalRoot, StringComparison.OrdinalIgnoreCase);
+
+            bool insideSolution = solutionRoot != null
+                && fullPath.StartsWith(solutionRoot, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(fullPath, solutionRoot, StringComparison.OrdinalIgnoreCase);
+
+            if (!insideGlobal && !insideSolution)
+            {
+                return false;
+            }
+
+            Directory.Delete(folderPath, recursive: true);
+            return true;
+        }
+
+        /// <summary>
+        /// Renames a sub-folder inside a scratch root.
+        /// Returns the new folder path, or null if the rename failed.
+        /// </summary>
+        public static string RenameFolder(string oldPath, string newName)
+        {
+            if (string.IsNullOrWhiteSpace(oldPath) || !Directory.Exists(oldPath))
+            {
+                return null;
+            }
+
+            string parentDir = Path.GetDirectoryName(oldPath);
+            string newPath = Path.Combine(parentDir, newName);
+
+            if (Directory.Exists(newPath))
+            {
+                return null;
+            }
+
+            Directory.Move(oldPath, newPath);
+            return newPath;
+        }
+
+        /// <summary>
+        /// Returns the immediate sub-directories of a folder, sorted by name.
+        /// </summary>
+        public static IReadOnlyList<string> GetSubFolders(string folder)
+        {
+            if (!Directory.Exists(folder))
+            {
+                return Array.Empty<string>();
+            }
+
+            return Directory.GetDirectories(folder)
+                .OrderBy(d => d, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        /// <summary>
+        /// Returns the immediate files in a folder (non-recursive), sorted by name.
+        /// </summary>
+        public static IReadOnlyList<string> GetFilesInFolder(string folder)
+        {
+            if (!Directory.Exists(folder))
+            {
+                return Array.Empty<string>();
+            }
+
+            return Directory.GetFiles(folder)
+                .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
         }
 
         private static string GetSolutionDirectory()

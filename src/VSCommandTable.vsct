@@ -49,13 +49,31 @@
 			<Group guid="ScratchFiles" id="TreeContextMenuDeleteGroup" priority="0x0200">
 				<Parent guid="ScratchFiles" id="TreeContextMenu"/>
 			</Group>
+
+			<!-- Folder context menu groups -->
+			<Group guid="ScratchFiles" id="FolderContextMenuAddGroup" priority="0x0100">
+				<Parent guid="ScratchFiles" id="FolderContextMenu"/>
+			</Group>
+			<Group guid="ScratchFiles" id="FolderContextMenuEditGroup" priority="0x0200">
+				<Parent guid="ScratchFiles" id="FolderContextMenu"/>
+			</Group>
+			<Group guid="ScratchFiles" id="FolderContextMenuOpenGroup" priority="0x0300">
+				<Parent guid="ScratchFiles" id="FolderContextMenu"/>
+			</Group>
 		</Groups>
 
 		<Menus>
-			<!-- Tree view context menu -->
+			<!-- Tree view context menu (files) -->
 			<Menu guid="ScratchFiles" id="TreeContextMenu" type="Context">
 				<Strings>
 					<ButtonText>Scratch File Context Menu</ButtonText>
+				</Strings>
+			</Menu>
+
+			<!-- Folder context menu (groups and sub-folders) -->
+			<Menu guid="ScratchFiles" id="FolderContextMenu" type="Context">
+				<Strings>
+					<ButtonText>Folder Context Menu</ButtonText>
 				</Strings>
 			</Menu>
 		</Menus>
@@ -145,6 +163,7 @@
 				<Parent guid="ScratchFiles" id="TreeContextMenuGroup"/>
 				<Icon guid="ImageCatalogGuid" id="Rename"/>
 				<CommandFlag>IconIsMoniker</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
 				<Strings>
 					<ButtonText>Rename</ButtonText>
 					<LocCanonicalName>.ScratchFiles.ContextRename</LocCanonicalName>
@@ -156,6 +175,7 @@
 				<Parent guid="ScratchFiles" id="TreeContextMenuDeleteGroup"/>
 				<Icon guid="ImageCatalogGuid" id="Cancel"/>
 				<CommandFlag>IconIsMoniker</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
 				<Strings>
 					<ButtonText>Delete</ButtonText>
 					<LocCanonicalName>.ScratchFiles.ContextDelete</LocCanonicalName>
@@ -172,8 +192,32 @@
 					<LocCanonicalName>.ScratchFiles.ContextOpenFolder</LocCanonicalName>
 				</Strings>
 			</Button>
+
+			<!-- Folder context menu: Add Folder -->
+			<Button guid="ScratchFiles" id="ContextAddFolder" priority="0x0100" type="Button">
+				<Parent guid="ScratchFiles" id="FolderContextMenuAddGroup"/>
+				<Icon guid="ImageCatalogGuid" id="NewFolder"/>
+				<CommandFlag>IconIsMoniker</CommandFlag>
+				<Strings>
+					<ButtonText>Add Folder</ButtonText>
+					<LocCanonicalName>.ScratchFiles.ContextAddFolder</LocCanonicalName>
+				</Strings>
+			</Button>
 		</Buttons>
 	</Commands>
+
+	<!-- Place Rename, Delete, Open Folder in the Folder context menu too -->
+	<CommandPlacements>
+		<CommandPlacement guid="ScratchFiles" id="ContextRename" priority="0x0100">
+			<Parent guid="ScratchFiles" id="FolderContextMenuEditGroup"/>
+		</CommandPlacement>
+		<CommandPlacement guid="ScratchFiles" id="ContextDelete" priority="0x0200">
+			<Parent guid="ScratchFiles" id="FolderContextMenuEditGroup"/>
+		</CommandPlacement>
+		<CommandPlacement guid="ScratchFiles" id="ContextOpenFolder" priority="0x0100">
+			<Parent guid="ScratchFiles" id="FolderContextMenuOpenGroup"/>
+		</CommandPlacement>
+	</CommandPlacements>
 
 	<KeyBindings>
 		<KeyBinding guid="ScratchFiles" id="NewSolutionScratchFile" editor="guidVSStd97" mod1="Control Alt" key1="N"/>
@@ -187,6 +231,7 @@
 			<!-- Menus -->
 			<IDSymbol name="ToolWindowToolbar" value="0x0010"/>
 			<IDSymbol name="TreeContextMenu" value="0x0011"/>
+			<IDSymbol name="FolderContextMenu" value="0x0012"/>
 
 			<!-- Groups -->
 			<IDSymbol name="FileMenuGroup" value="0x0001"/>
@@ -196,6 +241,9 @@
 			<IDSymbol name="ToolWindowToolbarActionsGroup" value="0x0005"/>
 			<IDSymbol name="TreeContextMenuGroup" value="0x0006"/>
 			<IDSymbol name="TreeContextMenuDeleteGroup" value="0x0007"/>
+			<IDSymbol name="FolderContextMenuAddGroup" value="0x0008"/>
+			<IDSymbol name="FolderContextMenuEditGroup" value="0x0009"/>
+			<IDSymbol name="FolderContextMenuOpenGroup" value="0x000A"/>
 
 			<!-- Commands -->
 			<IDSymbol name="NewGlobalScratchFile" value="0x0106"/>
@@ -208,6 +256,7 @@
 			<IDSymbol name="ContextRename" value="0x0111"/>
 			<IDSymbol name="ContextDelete" value="0x0112"/>
 			<IDSymbol name="ContextOpenFolder" value="0x0113"/>
+			<IDSymbol name="ContextAddFolder" value="0x0114"/>
 		</GuidSymbol>
 			<GuidSymbol name="ScratchFilesToolWindow" value="{a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d}"/>
 		</Symbols>
