@@ -3,6 +3,7 @@ using System.IO;
 using ScratchFiles.Models;
 using ScratchFiles.Services;
 using ScratchFiles.ToolWindows;
+using ScratchFiles.UI;
 
 namespace ScratchFiles.Commands
 {
@@ -42,7 +43,7 @@ namespace ScratchFiles.Commands
         {
             string currentName = Path.GetFileName(fileNode.FilePath);
 
-            string newName = Microsoft.VisualBasic.Interaction.InputBox(
+            string newName = InputDialog.Show(
                 "Enter a new name for the scratch file:",
                 "Rename Scratch File",
                 currentName);
@@ -64,7 +65,7 @@ namespace ScratchFiles.Commands
         {
             string currentName = Path.GetFileName(folderNode.FolderPath);
 
-            string newName = Microsoft.VisualBasic.Interaction.InputBox(
+            string newName = InputDialog.Show(
                 "Enter a new name for the folder:",
                 "Rename Folder",
                 currentName);

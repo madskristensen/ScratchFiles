@@ -80,6 +80,9 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>source.extension.vsixmanifest</DependentUpon>
     </Compile>
+    <Compile Include="UI\InputDialog.xaml.cs">
+      <DependentUpon>InputDialog.xaml</DependentUpon>
+    </Compile>
     <Compile Include="UI\LanguagePickerDialog.xaml.cs">
       <DependentUpon>LanguagePickerDialog.xaml</DependentUpon>
     </Compile>
@@ -92,6 +95,9 @@
   <ItemGroup>
     <Page Include="ToolWindows\ScratchFilesToolWindowControl.xaml">
       <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="UI\InputDialog.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="UI\LanguagePickerDialog.xaml">

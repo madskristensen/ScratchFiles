@@ -1,0 +1,130 @@
+<Window x:Class="ScratchFiles.UI.InputDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vs="clr-namespace:Microsoft.VisualStudio.PlatformUI;assembly=Microsoft.VisualStudio.Shell.15.0"
+        Title="Input"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        Width="350"
+        SizeToContent="Height"
+        Background="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowBackgroundBrushKey}}"
+        PreviewKeyDown="Window_PreviewKeyDown">
+
+    <Window.Resources>
+        <!-- VS-themed button style -->
+        <Style TargetType="Button">
+            <Setter Property="Foreground" Value="{DynamicResource {x:Static vs:EnvironmentColors.SystemButtonTextBrushKey}}"/>
+            <Setter Property="Background" Value="{DynamicResource {x:Static vs:EnvironmentColors.SystemButtonFaceBrushKey}}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowBorderBrushKey}}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,4"/>
+            <Setter Property="MinWidth" Value="75"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background"
+                                        Value="{DynamicResource {x:Static vs:EnvironmentColors.CommandBarMouseOverBackgroundGradientBrushKey}}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush"
+                                        Value="{DynamicResource {x:Static vs:EnvironmentColors.CommandBarBorderBrushKey}}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background"
+                                        Value="{DynamicResource {x:Static vs:EnvironmentColors.CommandBarMouseDownBackgroundGradientBrushKey}}"/>
+                            </Trigger>
+                            <Trigger Property="IsDefault" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush"
+                                        Value="{DynamicResource {x:Static vs:EnvironmentColors.FileTabSelectedBorderBrushKey}}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- VS-themed TextBox style -->
+        <Style TargetType="TextBox">
+            <Setter Property="Foreground" Value="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowTextBrushKey}}"/>
+            <Setter Property="Background" Value="{DynamicResource {x:Static vs:EnvironmentColors.ComboBoxBackgroundBrushKey}}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource {x:Static vs:EnvironmentColors.ComboBoxBorderBrushKey}}"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowTextBrushKey}}"/>
+            <Setter Property="SelectionBrush" Value="{DynamicResource {x:Static vs:EnvironmentColors.CommandBarSelectedBrushKey}}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="4,3"/>
+        </Style>
+    </Window.Resources>
+
+    <Border BorderBrush="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowBorderBrushKey}}"
+            BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Title bar -->
+            <Border Grid.Row="0"
+                    Background="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowBackgroundBrushKey}}"
+                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid>
+                    <TextBlock Text="{Binding Path=Title, RelativeSource={RelativeSource AncestorType=Window}}"
+                               Foreground="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowTextBrushKey}}"
+                               Padding="10,8"
+                               FontWeight="SemiBold"/>
+                    <Button x:Name="CloseButton"
+                            Content="✕"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Padding="10,6"
+                            MinWidth="0"
+                            BorderThickness="0"
+                            Background="Transparent"
+                            Click="CloseButton_Click"/>
+                </Grid>
+            </Border>
+
+            <!-- Prompt text -->
+            <TextBlock x:Name="PromptText"
+                       Grid.Row="1"
+                       Foreground="{DynamicResource {x:Static vs:EnvironmentColors.ToolWindowTextBrushKey}}"
+                       Padding="12,8,12,4"
+                       TextWrapping="Wrap"/>
+
+            <!-- Input TextBox -->
+            <TextBox x:Name="InputTextBox"
+                     Grid.Row="2"
+                     Margin="12,8"
+                     VerticalAlignment="Center"/>
+
+            <!-- Buttons -->
+            <StackPanel Grid.Row="3"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Margin="12,8,12,12">
+                <Button x:Name="OkButton"
+                        Content="OK"
+                        IsDefault="True"
+                        Click="OkButton_Click"
+                        Margin="0,0,8,0"/>
+                <Button x:Name="CancelButton"
+                        Content="Cancel"
+                        IsCancel="True"
+                        Click="CancelButton_Click"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>
