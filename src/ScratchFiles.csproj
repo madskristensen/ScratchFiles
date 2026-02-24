@@ -57,6 +57,9 @@
     <Compile Include="Commands\NewGlobalScratchFileCommand.cs" />
     <Compile Include="Commands\NewSolutionScratchFileCommand.cs" />
     <Compile Include="Commands\ScratchFileInfoBar.cs" />
+    <Compile Include="SuggestedActions\CreateScratchFromSelectionAction.cs" />
+    <Compile Include="SuggestedActions\ScratchSuggestedActionsSource.cs" />
+    <Compile Include="SuggestedActions\ScratchSuggestedActionsSourceProvider.cs" />
     <Compile Include="Commands\ShowToolWindowCommand.cs" />
     <Compile Include="Helpers\TreeViewItemToIndentConverter.cs" />
     <Compile Include="Models\ScratchFileNode.cs" />

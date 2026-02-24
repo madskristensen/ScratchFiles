@@ -3,7 +3,7 @@
     <Metadata>
         <Identity Id="ScratchFiles.dd6e64bc-b8c3-4848-8295-3357bc88627c" Version="1.0.900" Language="en-US" Publisher="Mads Kristensen" />
         <DisplayName>Scratch Files</DisplayName>
-        <Description xml:space="preserve">Empty VSIX Project.</Description>
+        <Description xml:space="preserve">Quick-access scratch files for notes and code drafts — global or per-solution — with auto language detection.</Description>
         <MoreInfo>https://github.com/madskristensen/ScratchFiles/</MoreInfo>
         <License>Resources\LICENSE.txt</License>
         <Icon>Resources\Icon.png</Icon>
@@ -20,5 +20,6 @@
     </Prerequisites>
     <Assets>
         <Asset Type="Microsoft.VisualStudio.VsPackage" d:Source="Project" d:ProjectName="%CurrentProject%" Path="|%CurrentProject%;PkgdefProjectOutputGroup|" />
+        <Asset Type="Microsoft.VisualStudio.MefComponent" d:Source="Project" d:ProjectName="%CurrentProject%" Path="|%CurrentProject%|" />
     </Assets>
 </PackageManifest>
