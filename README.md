@@ -34,7 +34,9 @@ Click **Change Language** in the InfoBar to choose from every file type register
 ### Global and solution-scoped files
 
 - **Global scratch files** are stored in `%APPDATA%\ScratchFiles` and available across all sessions.
-- **Solution scratch files** (Ctrl+Alt+N) are stored in `.vs\ScratchFiles` within your solution directory and travel with the solution.
+- **Solution scratch files** are stored in `.vs\ScratchFiles` within your solution directory and travel with the solution.
+
+New files are created in the Global scope by default. Use **Move to Solution** or **Move to Global** in the InfoBar to change the scope of any file.
 
 ![Tool window showing global and solution files](art/toolwindow.png)
 
@@ -54,8 +56,7 @@ Promote any scratch file to a real file. Click **Save As...** in the InfoBar to 
 
 | Action | Shortcut |
 |---|---|
-| New global scratch file | `Ctrl+N` |
-| New solution scratch file | `Ctrl+Alt+N` |
+| New scratch file | `Ctrl+N` |
 
 ## Options
 

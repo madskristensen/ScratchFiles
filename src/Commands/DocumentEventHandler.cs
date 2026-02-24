@@ -18,6 +18,7 @@ namespace ScratchFiles.Commands
     internal sealed class DocumentEventHandler : IVsRunningDocTableEvents3, IDisposable
     {
         private readonly RunningDocumentTable _rdt;
+        private readonly object _ctsLock = new object();
         private uint _adviseCookie;
         private static DocumentEventHandler _instance;
         private CancellationTokenSource _autoDetectCts;
@@ -45,11 +46,27 @@ namespace ScratchFiles.Commands
         /// </summary>
         public void Dispose()
         {
+            lock (_ctsLock)
+            {
+                _autoDetectCts?.Cancel();
+                _autoDetectCts?.Dispose();
+                _autoDetectCts = null;
+            }
+
             if (_adviseCookie != 0)
             {
                 _rdt.Unadvise(_adviseCookie);
                 _adviseCookie = 0;
             }
+        }
+
+        /// <summary>
+        /// Shuts down the static instance. Call from package dispose.
+        /// </summary>
+        public static void Shutdown()
+        {
+            _instance?.Dispose();
+            _instance = null;
         }
 
         public int OnBeforeSave(uint docCookie)
@@ -63,10 +80,16 @@ namespace ScratchFiles.Commands
 
                 if (!string.IsNullOrEmpty(filePath) && ScratchFileService.IsScratchFile(filePath))
                 {
-                    // Cancel any previous pending auto-detection to avoid races on rapid saves
-                    _autoDetectCts?.Cancel();
-                    _autoDetectCts = new CancellationTokenSource();
-                    CancellationToken token = _autoDetectCts.Token;
+                    CancellationToken token;
+
+                    lock (_ctsLock)
+                    {
+                        // Cancel any previous pending auto-detection to avoid races on rapid saves
+                        _autoDetectCts?.Cancel();
+                        _autoDetectCts?.Dispose();
+                        _autoDetectCts = new CancellationTokenSource();
+                        token = _autoDetectCts.Token;
+                    }
 
                     // Trigger auto-detection after save for .scratch files
                     ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
@@ -178,15 +201,35 @@ namespace ScratchFiles.Commands
 
                 if (!string.IsNullOrEmpty(filePath) && ScratchFileService.IsScratchFile(filePath))
                 {
-                    // Auto-delete empty scratch files when the last window is closed
-                    var fileInfo = new FileInfo(filePath);
-
-                    if (fileInfo.Exists && fileInfo.Length == 0)
+                    // Move file I/O off the UI thread
+                    ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
                     {
-                        ScratchFileInfoBar.Detach(filePath);
-                        ScratchFileService.DeleteScratchFile(filePath);
-                        ScratchFilesToolWindowControl.RefreshAll();
-                    }
+                        try
+                        {
+                            // Check file on background thread
+                            bool shouldDelete = await Task.Run(() =>
+                            {
+                                var fileInfo = new FileInfo(filePath);
+                                return fileInfo.Exists && fileInfo.Length == 0;
+                            });
+
+                            if (shouldDelete)
+                            {
+                                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                                ScratchFileInfoBar.Detach(filePath);
+
+                                // Delete on background thread
+                                await Task.Run(() => ScratchFileService.DeleteScratchFile(filePath));
+
+                                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                                ScratchFilesToolWindowControl.RefreshAll();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            await ex.LogAsync();
+                        }
+                    }).FireAndForget();
                 }
             }
             catch

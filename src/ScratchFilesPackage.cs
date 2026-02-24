@@ -36,6 +36,17 @@ namespace ScratchFiles
 
             DocumentEventHandler.Initialize();
         }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                ScratchFileInfoBar.ClearAll();
+                DocumentEventHandler.Shutdown();
+            }
+
+            base.Dispose(disposing);
+        }
     }
 
     /// <summary>

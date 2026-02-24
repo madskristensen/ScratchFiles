@@ -22,6 +22,10 @@ namespace ScratchFiles.ToolWindows
         private static ScratchNodeBase _selectedNode;
         private Point _dragStartPoint;
 
+        // Store event handlers so they can be unsubscribed
+        private readonly Action<Solution> _solutionOpenedHandler;
+        private readonly Action _solutionClosedHandler;
+
         public ScratchFilesToolWindowControl()
         {
             InitializeComponent();
@@ -32,8 +36,27 @@ namespace ScratchFiles.ToolWindows
             SetupTreeView();
             RefreshTree();
 
-            VS.Events.SolutionEvents.OnAfterOpenSolution += (s) => RefreshTree();
-            VS.Events.SolutionEvents.OnAfterCloseSolution += () => RefreshTree();
+            // Store handlers for later unsubscription
+            _solutionOpenedHandler = (s) => RefreshTree();
+            _solutionClosedHandler = () => RefreshTree();
+
+            VS.Events.SolutionEvents.OnAfterOpenSolution += _solutionOpenedHandler;
+            VS.Events.SolutionEvents.OnAfterCloseSolution += _solutionClosedHandler;
+
+            // Unsubscribe when control is unloaded to prevent memory leaks
+            Unloaded += OnUnloaded;
+        }
+
+        private void OnUnloaded(object sender, RoutedEventArgs e)
+        {
+            VS.Events.SolutionEvents.OnAfterOpenSolution -= _solutionOpenedHandler;
+            VS.Events.SolutionEvents.OnAfterCloseSolution -= _solutionClosedHandler;
+            Unloaded -= OnUnloaded;
+
+            if (_instance == this)
+            {
+                _instance = null;
+            }
         }
 
         internal ObservableCollection<ScratchNodeBase> RootNodes { get; }

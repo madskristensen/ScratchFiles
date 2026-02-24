@@ -40,6 +40,9 @@ namespace ScratchFiles.Commands
             }
 
             ScratchFilesToolWindowControl.RefreshAndSelect(filePath);
+
+            // Set focus to the new document so user can start typing immediately
+            docView?.TextView?.VisualElement?.Focus();
         }
     }
 }

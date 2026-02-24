@@ -97,6 +97,21 @@ namespace ScratchFiles.Commands
             return filePath != null && _activeBars.ContainsKey(filePath);
         }
 
+        /// <summary>
+        /// Closes all active InfoBars and clears the tracking dictionary.
+        /// Call on solution close or package dispose to prevent memory leaks.
+        /// </summary>
+        public static void ClearAll()
+        {
+            foreach (ScratchFileInfoBar handler in _activeBars.Values)
+            {
+                handler._isDetached = true;
+                handler._infoBar?.Close();
+            }
+
+            _activeBars.Clear();
+        }
+
         private async Task ShowAsync()
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();

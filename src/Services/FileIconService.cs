@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 
 using Microsoft.VisualStudio.Imaging;
 using Microsoft.VisualStudio.Imaging.Interop;
@@ -12,11 +12,13 @@ namespace ScratchFiles.Services
     /// </summary>
     internal static class FileIconService
     {
-        private static readonly Dictionary<string, ImageMoniker> _cache = new Dictionary<string, ImageMoniker>(StringComparer.OrdinalIgnoreCase);
+        private static readonly ConcurrentDictionary<string, ImageMoniker> _cache =
+            new ConcurrentDictionary<string, ImageMoniker>(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// Returns the VS image moniker for the given filename based on its extension.
         /// Falls back to KnownMonikers.Document if the image service is unavailable.
+        /// Must be called on the UI thread (ResolveMoniker requires it).
         /// </summary>
         public static ImageMoniker GetImageMonikerForFile(string fileName)
         {
@@ -32,14 +34,7 @@ namespace ScratchFiles.Services
                 return KnownMonikers.Document;
             }
 
-            if (_cache.TryGetValue(extension, out ImageMoniker cached))
-            {
-                return cached;
-            }
-
-            ImageMoniker moniker = ResolveMoniker(fileName);
-            _cache[extension] = moniker;
-            return moniker;
+            return _cache.GetOrAdd(extension, _ => ResolveMoniker(fileName));
         }
 
         /// <summary>
