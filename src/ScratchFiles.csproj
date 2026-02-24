@@ -53,7 +53,6 @@
     <Compile Include="Commands\ContextAddFolderCommand.cs" />
     <Compile Include="Commands\ContextOpenFolderCommand.cs" />
     <Compile Include="Commands\ToolbarNewGlobalCommand.cs" />
-    <Compile Include="Commands\ToolbarNewSolutionCommand.cs" />
     <Compile Include="Commands\ToolbarOpenFolderCommand.cs" />
     <Compile Include="Commands\DocumentEventHandler.cs" />
     <Compile Include="Commands\NewGlobalScratchFileCommand.cs" />

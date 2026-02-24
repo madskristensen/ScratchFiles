@@ -42,6 +42,8 @@ Click **Change Language** in the InfoBar to choose from every file type register
 
 Open via **View > Other Windows > Scratch Files**. The tool window shows all your scratch files organized by scope (Global vs. Solution) with file-type icons, a toolbar for creating new files, and a right-click context menu.
 
+**Drag and drop** files and folders to reorganize them — just like Windows Explorer. Create subfolders via the context menu to keep your scratch files organized.
+
 <!-- ![Tool window with context menu](art/tool-window-context-menu.png) -->
 
 ### Save As...

@@ -82,7 +82,7 @@
 			<!-- New Global Scratch File (Ctrl+N intercept handled in code) -->
 			<Button guid="ScratchFiles" id="NewGlobalScratchFile" priority="0x0100" type="Button">
 				<Parent guid="ScratchFiles" id="FileMenuGroup"/>
-				<Icon guid="ImageCatalogGuid" id="NewDocument"/>
+				<Icon guid="ImageCatalogGuid" id="NewLog"/>
 				<CommandFlag>IconIsMoniker</CommandFlag>
 				<Strings>
 					<ButtonText>New Scratch File</ButtonText>
@@ -93,7 +93,7 @@
 			<!-- New Solution Scratch File (Ctrl+Alt+N) -->
 			<Button guid="ScratchFiles" id="NewSolutionScratchFile" priority="0x0100" type="Button">
 				<Parent guid="ScratchFiles" id="SolutionContextMenuGroup"/>
-				<Icon guid="ImageCatalogGuid" id="NewDocument"/>
+				<Icon guid="ImageCatalogGuid" id="NewLog"/>
 				<CommandFlag>IconIsMoniker</CommandFlag>
 				<CommandFlag>DynamicVisibility</CommandFlag>
 				<Strings>
@@ -105,7 +105,7 @@
 			<!-- Show Scratch Files Tool Window -->
 			<Button guid="ScratchFiles" id="ShowToolWindow" priority="0x0100" type="Button">
 				<Parent guid="VSMainMenu" id="View.DevWindowsGroup.OtherWindows.Group1"/>
-				<Icon guid="ImageCatalogGuid" id="DocumentGroup"/>
+				<Icon guid="ImageCatalogGuid" id="Log"/>
 				<CommandFlag>IconIsMoniker</CommandFlag>
 				<Strings>
 					<ButtonText>Scratch Files</ButtonText>
@@ -113,26 +113,14 @@
 				</Strings>
 			</Button>
 
-			<!-- Toolbar: New Global -->
+			<!-- Toolbar: New Scratch File -->
 			<Button guid="ScratchFiles" id="ToolbarNewGlobal" priority="0x0100" type="Button">
 				<Parent guid="ScratchFiles" id="ToolWindowToolbarNewGroup"/>
-				<Icon guid="ImageCatalogGuid" id="NewDocument"/>
+				<Icon guid="ImageCatalogGuid" id="NewLog"/>
 				<CommandFlag>IconIsMoniker</CommandFlag>
 				<Strings>
-					<ButtonText>New Global Scratch File</ButtonText>
+					<ButtonText>New Scratch File</ButtonText>
 					<LocCanonicalName>.ScratchFiles.ToolbarNewGlobal</LocCanonicalName>
-				</Strings>
-			</Button>
-
-			<!-- Toolbar: New Solution -->
-			<Button guid="ScratchFiles" id="ToolbarNewSolution" priority="0x0200" type="Button">
-				<Parent guid="ScratchFiles" id="ToolWindowToolbarNewGroup"/>
-				<Icon guid="ImageCatalogGuid" id="AddDocument"/>
-				<CommandFlag>IconIsMoniker</CommandFlag>
-				<CommandFlag>DynamicVisibility</CommandFlag>
-				<Strings>
-					<ButtonText>New Solution Scratch File</ButtonText>
-					<LocCanonicalName>.ScratchFiles.ToolbarNewSolution</LocCanonicalName>
 				</Strings>
 			</Button>
 
@@ -150,7 +138,7 @@
 			<!-- Context menu: Open -->
 			<Button guid="ScratchFiles" id="ContextOpen" priority="0x0100" type="Button">
 				<Parent guid="ScratchFiles" id="TreeContextMenuGroup"/>
-				<Icon guid="ImageCatalogGuid" id="StatusInformation"/>
+				<Icon guid="ImageCatalogGuid" id="Open"/>
 				<CommandFlag>IconIsMoniker</CommandFlag>
 				<Strings>
 					<ButtonText>Open</ButtonText>
@@ -220,7 +208,6 @@
 	</CommandPlacements>
 
 	<KeyBindings>
-		<KeyBinding guid="ScratchFiles" id="NewSolutionScratchFile" editor="guidVSStd97" mod1="Control Alt" key1="N"/>
 		<KeyBinding guid="ScratchFiles" id="ContextOpen" editor="ScratchFilesToolWindow" key1="VK_RETURN"/>
 		<KeyBinding guid="ScratchFiles" id="ContextRename" editor="ScratchFilesToolWindow" key1="VK_F2"/>
 		<KeyBinding guid="ScratchFiles" id="ContextDelete" editor="ScratchFilesToolWindow" key1="VK_DELETE"/>
@@ -250,7 +237,6 @@
 			<IDSymbol name="NewSolutionScratchFile" value="0x0101"/>
 			<IDSymbol name="ShowToolWindow" value="0x0102"/>
 			<IDSymbol name="ToolbarNewGlobal" value="0x0103"/>
-			<IDSymbol name="ToolbarNewSolution" value="0x0104"/>
 			<IDSymbol name="ToolbarOpenFolder" value="0x0105"/>
 			<IDSymbol name="ContextOpen" value="0x0110"/>
 			<IDSymbol name="ContextRename" value="0x0111"/>
@@ -258,6 +244,6 @@
 			<IDSymbol name="ContextOpenFolder" value="0x0113"/>
 			<IDSymbol name="ContextAddFolder" value="0x0114"/>
 		</GuidSymbol>
-			<GuidSymbol name="ScratchFilesToolWindow" value="{a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d}"/>
-		</Symbols>
-	</CommandTable>
+		<GuidSymbol name="ScratchFilesToolWindow" value="{a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d}"/>
+	</Symbols>
+</CommandTable>

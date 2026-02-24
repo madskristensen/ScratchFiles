@@ -32,8 +32,6 @@ namespace ScratchFiles.ToolWindows
             SetupTreeView();
             RefreshTree();
 
-            PreviewKeyDown += OnPreviewKeyDown;
-
             VS.Events.SolutionEvents.OnAfterOpenSolution += (s) => RefreshTree();
             VS.Events.SolutionEvents.OnAfterCloseSolution += () => RefreshTree();
         }
@@ -61,6 +59,15 @@ namespace ScratchFiles.ToolWindows
         internal static void RefreshAll()
         {
             _instance?.RefreshTree();
+        }
+
+        /// <summary>
+        /// Refreshes the tree view and selects the specified file.
+        /// </summary>
+        internal static void RefreshAndSelect(string filePath)
+        {
+            _instance?.RefreshTree();
+            _instance?.SelectFileByPath(filePath);
         }
 
         /// <summary>
@@ -111,7 +118,6 @@ namespace ScratchFiles.ToolWindows
             ScratchTree.PreviewMouseRightButtonDown += ScratchTree_PreviewMouseRightButtonDown;
             ScratchTree.PreviewMouseRightButtonUp += ScratchTree_PreviewMouseRightButtonUp;
             ScratchTree.MouseDoubleClick += ScratchTree_MouseDoubleClick;
-            ScratchTree.KeyDown += ScratchTree_KeyDown;
 
             // Drag-and-drop
             ScratchTree.AllowDrop = true;
@@ -230,80 +236,54 @@ namespace ScratchFiles.ToolWindows
         {
             if (SelectedNode is ScratchFileNode fileNode)
             {
-                OpenFileAsync(fileNode).FireAndForget();
+                VS.Documents.OpenAsync(fileNode.FilePath).FireAndForget();
                 e.Handled = true;
             }
         }
 
-        private void ScratchTree_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (SelectedNode is not ScratchFileNode fileNode)
-            {
-                return;
-            }
+        //private static async Task OpenFileAsync(ScratchFileNode fileNode)
+        //{
+        //    try
+        //    {
+        //        await VS.Documents.OpenAsync(fileNode.FilePath);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        await ex.LogAsync();
+        //    }
+        //}
 
-            switch (e.Key)
-            {
-                case Key.Enter:
-                    OpenFileAsync(fileNode).FireAndForget();
-                    e.Handled = true;
-                    break;
+        //private static void RenameFileNode(ScratchFileNode fileNode)
+        //{
+        //    string currentName = Path.GetFileName(fileNode.FilePath);
 
-                case Key.F2:
-                    RenameFileNode(fileNode);
-                    e.Handled = true;
-                    break;
+        //    string newName = Microsoft.VisualBasic.Interaction.InputBox(
+        //        "Enter a new name for the scratch file:",
+        //        "Rename Scratch File",
+        //        currentName);
 
-                case Key.Delete:
-                    DeleteFileNodeAsync(fileNode).FireAndForget();
-                    e.Handled = true;
-                    break;
-            }
-        }
+        //    if (!string.IsNullOrWhiteSpace(newName) && !string.Equals(newName, currentName, StringComparison.OrdinalIgnoreCase))
+        //    {
+        //        string oldPath = fileNode.FilePath;
+        //        string newPath = ScratchFileService.RenameScratchFile(oldPath, newName);
 
-        private static async Task OpenFileAsync(ScratchFileNode fileNode)
-        {
-            try
-            {
-                await VS.Documents.OpenAsync(fileNode.FilePath);
-            }
-            catch (Exception ex)
-            {
-                await ex.LogAsync();
-            }
-        }
+        //        if (newPath != null)
+        //        {
+        //            ScratchFileInfoBar.UpdatePath(oldPath, newPath);
+        //            RefreshAll();
+        //        }
+        //    }
+        //}
 
-        private static void RenameFileNode(ScratchFileNode fileNode)
-        {
-            string currentName = Path.GetFileName(fileNode.FilePath);
-
-            string newName = Microsoft.VisualBasic.Interaction.InputBox(
-                "Enter a new name for the scratch file:",
-                "Rename Scratch File",
-                currentName);
-
-            if (!string.IsNullOrWhiteSpace(newName) && !string.Equals(newName, currentName, StringComparison.OrdinalIgnoreCase))
-            {
-                string oldPath = fileNode.FilePath;
-                string newPath = ScratchFileService.RenameScratchFile(oldPath, newName);
-
-                if (newPath != null)
-                {
-                    ScratchFileInfoBar.UpdatePath(oldPath, newPath);
-                    RefreshAll();
-                }
-            }
-        }
-
-        private static async Task DeleteFileNodeAsync(ScratchFileNode fileNode)
-        {
-            if (await VS.MessageBox.ShowConfirmAsync("Delete Scratch File", $"Delete '{fileNode.Label}'?"))
-            {
-                ScratchFileInfoBar.Detach(fileNode.FilePath);
-                ScratchFileService.DeleteScratchFile(fileNode.FilePath);
-                RefreshAll();
-            }
-        }
+        //private static async Task DeleteFileNodeAsync(ScratchFileNode fileNode)
+        //{
+        //    if (await VS.MessageBox.ShowConfirmAsync("Delete Scratch File", $"Delete '{fileNode.Label}'?"))
+        //    {
+        //        ScratchFileInfoBar.Detach(fileNode.FilePath);
+        //        ScratchFileService.DeleteScratchFile(fileNode.FilePath);
+        //        RefreshAll();
+        //    }
+        //}
 
         /// <summary>
         /// Moves keyboard focus from the search box into the first visible tree node. Called by the Pane when Down
@@ -377,6 +357,97 @@ namespace ScratchFiles.ToolWindows
                     return;
                 }
             }
+        }
+
+        /// <summary>
+        /// Finds and selects a file node by its file path.
+        /// </summary>
+        private void SelectFileByPath(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath))
+            {
+                return;
+            }
+
+            ScratchFileNode fileNode = FindFileNodeByPath(filePath);
+
+            if (fileNode != null)
+            {
+                // Expand parent groups/folders to make the node visible
+                ExpandParentsOf(fileNode);
+
+                // Force layout update so TreeViewItem containers are generated
+                ScratchTree.UpdateLayout();
+
+                SelectNodeInTree(fileNode);
+            }
+        }
+
+        private ScratchFileNode FindFileNodeByPath(string filePath)
+        {
+            foreach (ScratchNodeBase group in RootNodes)
+            {
+                ScratchFileNode found = FindFileNodeRecursive(group, filePath);
+
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+
+            return null;
+        }
+
+        private static ScratchFileNode FindFileNodeRecursive(ScratchNodeBase node, string filePath)
+        {
+            if (node is ScratchFileNode fileNode
+                && string.Equals(fileNode.FilePath, filePath, StringComparison.OrdinalIgnoreCase))
+            {
+                return fileNode;
+            }
+
+            foreach (ScratchNodeBase child in node.Children)
+            {
+                ScratchFileNode found = FindFileNodeRecursive(child, filePath);
+
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+
+            return null;
+        }
+
+        private void ExpandParentsOf(ScratchNodeBase targetNode)
+        {
+            foreach (ScratchNodeBase group in RootNodes)
+            {
+                if (ExpandIfContains(group, targetNode))
+                {
+                    return;
+                }
+            }
+        }
+
+        private static bool ExpandIfContains(ScratchNodeBase parent, ScratchNodeBase target)
+        {
+            foreach (ScratchNodeBase child in parent.Children)
+            {
+                if (child == target)
+                {
+                    parent.IsExpanded = true;
+                    return true;
+                }
+
+                if (ExpandIfContains(child, target))
+                {
+                    parent.IsExpanded = true;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static string GetSolutionName()
@@ -473,15 +544,6 @@ namespace ScratchFiles.ToolWindows
             }
         }
 
-        private void OnPreviewKeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.F && Keyboard.Modifiers == ModifierKeys.Control)
-            {
-                ScratchFilesToolWindow.Pane.ActivateSearch();
-                e.Handled = true;
-            }
-        }
-
         private static T FindAncestor<T>(DependencyObject current) where T : DependencyObject
         {
             while (current != null)
@@ -525,29 +587,57 @@ namespace ScratchFiles.ToolWindows
                 var data = new DataObject(typeof(ScratchFileNode), fileNode);
                 DragDrop.DoDragDrop(ScratchTree, data, DragDropEffects.Move);
             }
+            else if (_selectedNode is ScratchFolderNode folderNode)
+            {
+                var data = new DataObject(typeof(ScratchFolderNode), folderNode);
+                DragDrop.DoDragDrop(ScratchTree, data, DragDropEffects.Move);
+            }
         }
 
         private void ScratchTree_DragOver(object sender, DragEventArgs e)
         {
             e.Effects = DragDropEffects.None;
 
-            if (!e.Data.GetDataPresent(typeof(ScratchFileNode)))
+            ScratchNodeBase targetNode = GetDropTargetNode(e);
+            string targetFolder = GetNodeFolderPath(targetNode);
+
+            if (targetFolder == null)
             {
+                e.Handled = true;
                 return;
             }
 
-            ScratchNodeBase targetNode = GetDropTargetNode(e);
-
-            if (targetNode is ScratchGroupNode || targetNode is ScratchFolderNode)
+            // Handle file drag
+            if (e.Data.GetDataPresent(typeof(ScratchFileNode)))
             {
                 ScratchFileNode draggedFile = e.Data.GetData(typeof(ScratchFileNode)) as ScratchFileNode;
-                string targetFolder = GetNodeFolderPath(targetNode);
 
                 // Don't allow drop onto the same folder the file is already in
-                if (draggedFile != null && targetFolder != null
+                if (draggedFile != null
                     && !string.Equals(Path.GetDirectoryName(draggedFile.FilePath), targetFolder, StringComparison.OrdinalIgnoreCase))
                 {
                     e.Effects = DragDropEffects.Move;
+                }
+            }
+            // Handle folder drag
+            else if (e.Data.GetDataPresent(typeof(ScratchFolderNode)))
+            {
+                ScratchFolderNode draggedFolder = e.Data.GetData(typeof(ScratchFolderNode)) as ScratchFolderNode;
+
+                if (draggedFolder != null)
+                {
+                    string sourcePath = Path.GetFullPath(draggedFolder.FolderPath);
+                    string destPath = Path.GetFullPath(targetFolder);
+
+                    // Don't allow drop onto itself, its parent, or any descendant
+                    bool isSameParent = string.Equals(Path.GetDirectoryName(sourcePath), destPath, StringComparison.OrdinalIgnoreCase);
+                    bool isDescendant = destPath.StartsWith(sourcePath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(destPath, sourcePath, StringComparison.OrdinalIgnoreCase);
+
+                    if (!isSameParent && !isDescendant)
+                    {
+                        e.Effects = DragDropEffects.Move;
+                    }
                 }
             }
 
@@ -556,29 +646,47 @@ namespace ScratchFiles.ToolWindows
 
         private void ScratchTree_Drop(object sender, DragEventArgs e)
         {
-            if (!e.Data.GetDataPresent(typeof(ScratchFileNode)))
-            {
-                return;
-            }
-
-            ScratchFileNode draggedFile = e.Data.GetData(typeof(ScratchFileNode)) as ScratchFileNode;
             ScratchNodeBase targetNode = GetDropTargetNode(e);
             string targetFolder = GetNodeFolderPath(targetNode);
 
-            if (draggedFile == null || targetFolder == null)
+            if (targetFolder == null)
             {
                 return;
             }
 
             try
             {
-                string oldPath = draggedFile.FilePath;
-                string newPath = ScratchFileService.MoveScratchFile(oldPath, targetFolder);
-
-                if (newPath != null)
+                // Handle file drop
+                if (e.Data.GetDataPresent(typeof(ScratchFileNode)))
                 {
-                    ScratchFileInfoBar.UpdatePath(oldPath, newPath);
-                    RefreshAll();
+                    ScratchFileNode draggedFile = e.Data.GetData(typeof(ScratchFileNode)) as ScratchFileNode;
+
+                    if (draggedFile != null)
+                    {
+                        string oldPath = draggedFile.FilePath;
+                        string newPath = ScratchFileService.MoveScratchFile(oldPath, targetFolder);
+
+                        if (newPath != null)
+                        {
+                            ScratchFileInfoBar.UpdatePath(oldPath, newPath);
+                            RefreshAll();
+                        }
+                    }
+                }
+                // Handle folder drop
+                else if (e.Data.GetDataPresent(typeof(ScratchFolderNode)))
+                {
+                    ScratchFolderNode draggedFolder = e.Data.GetData(typeof(ScratchFolderNode)) as ScratchFolderNode;
+
+                    if (draggedFolder != null)
+                    {
+                        string newPath = ScratchFileService.MoveFolder(draggedFolder.FolderPath, targetFolder);
+
+                        if (newPath != null)
+                        {
+                            RefreshAll();
+                        }
+                    }
                 }
             }
             catch (Exception ex)

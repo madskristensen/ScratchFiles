@@ -1,11 +1,11 @@
-using System.Collections.Generic;
-using System.IO;
-
 using Microsoft.VisualStudio.Imaging;
 using Microsoft.VisualStudio.Shell.Interop;
 
 using ScratchFiles.Services;
 using ScratchFiles.ToolWindows;
+
+using System.Collections.Generic;
+using System.IO;
 
 namespace ScratchFiles.Commands
 {
@@ -103,19 +103,33 @@ namespace ScratchFiles.Commands
 
             string currentExt = Path.GetExtension(_filePath);
             string langDisplay = GetLanguageDisplayName(currentExt);
+            ScratchScope currentScope = ScratchFileService.GetScope(_filePath);
+            string scopeDisplay = currentScope == ScratchScope.Solution ? "Solution" : "Global";
+
+            // Build action items - include scope change only if a solution is open
+            var actions = new List<IVsInfoBarActionItem>
+            {
+                new InfoBarHyperlink("Change Language", "change_language"),
+                new InfoBarHyperlink("Save As...", "save_as"),
+            };
+
+            // Only show scope change option if a solution is open
+            if (ScratchFileService.GetSolutionScratchFolderPath() != null)
+            {
+                string scopeAction = currentScope == ScratchScope.Solution
+                    ? "Move to Global"
+                    : "Move to Solution";
+                actions.Add(new InfoBarHyperlink(scopeAction, "change_scope"));
+            }
 
             var model = new InfoBarModel(
                 new IVsInfoBarTextSpan[]
                 {
-                    new InfoBarTextSpan("Scratch File — Language: "),
+                    new InfoBarTextSpan($"Scratch File ({scopeDisplay}) — Language: "),
                     new InfoBarTextSpan(langDisplay, true),
                 },
-                new IVsInfoBarActionItem[]
-                {
-                    new InfoBarHyperlink("Change Language", "change_language"),
-                    new InfoBarHyperlink("Save As...", "save_as"),
-                },
-                KnownMonikers.Document,
+                actions.ToArray(),
+                KnownMonikers.Log,
                 isCloseButtonVisible: true);
 
             _infoBar = await VS.InfoBar.CreateAsync(_docView.WindowFrame, model);
@@ -167,6 +181,20 @@ namespace ScratchFiles.Commands
                         }
                     }).FireAndForget();
                     break;
+
+                case "change_scope":
+                    ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+                    {
+                        try
+                        {
+                            await ChangeScopeAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            await ex.LogAsync();
+                        }
+                    }).FireAndForget();
+                    break;
             }
         }
 
@@ -193,6 +221,44 @@ namespace ScratchFiles.Commands
                 Detach(oldPath);
 
                 // Close the old document tab (file was already saved and renamed on disk)
+                if (_docView.WindowFrame != null)
+                {
+                    await _docView.WindowFrame.CloseFrameAsync(FrameCloseOption.NoSave);
+                }
+
+                await VS.Documents.OpenAsync(newPath);
+
+                DocumentView newDocView = await VS.Documents.GetDocumentViewAsync(newPath);
+
+                if (newDocView != null)
+                {
+                    await AttachAsync(newDocView);
+                }
+
+                ScratchFilesToolWindowControl.RefreshAll();
+            }
+        }
+
+        private async Task ChangeScopeAsync()
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+
+            string oldPath = _docView.Document.FilePath;
+            ScratchScope currentScope = ScratchFileService.GetScope(oldPath);
+            ScratchScope targetScope = currentScope == ScratchScope.Solution
+                ? ScratchScope.Global
+                : ScratchScope.Solution;
+
+            // Save unsaved edits to disk before moving
+            _docView.Document.Save();
+
+            string newPath = ScratchFileService.MoveToScope(oldPath, targetScope);
+
+            if (newPath != null)
+            {
+                Detach(oldPath);
+
+                // Close the old document tab (file was already saved and moved on disk)
                 if (_docView.WindowFrame != null)
                 {
                     await _docView.WindowFrame.CloseFrameAsync(FrameCloseOption.NoSave);

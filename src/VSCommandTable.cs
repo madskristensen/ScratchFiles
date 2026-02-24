@@ -42,7 +42,6 @@ namespace ScratchFiles
         public const int NewSolutionScratchFile = 0x0101;
         public const int ShowToolWindow = 0x0102;
         public const int ToolbarNewGlobal = 0x0103;
-        public const int ToolbarNewSolution = 0x0104;
         public const int ToolbarOpenFolder = 0x0105;
         public const int ContextOpen = 0x0110;
         public const int ContextRename = 0x0111;

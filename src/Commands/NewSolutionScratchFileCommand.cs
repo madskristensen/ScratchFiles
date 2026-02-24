@@ -39,7 +39,7 @@ namespace ScratchFiles.Commands
                 await ScratchFileInfoBar.AttachAsync(docView);
             }
 
-            ScratchFilesToolWindowControl.RefreshAll();
+            ScratchFilesToolWindowControl.RefreshAndSelect(filePath);
         }
     }
 }

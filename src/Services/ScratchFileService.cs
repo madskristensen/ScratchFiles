@@ -294,6 +294,7 @@ namespace ScratchFiles.Services
 
         /// <summary>
         /// Moves a scratch file to a different folder within the scratch roots.
+        /// If a file with the same name exists, auto-renames with the next available number.
         /// Returns the new file path, or null if the move failed.
         /// </summary>
         public static string MoveScratchFile(string sourcePath, string destinationFolder)
@@ -308,14 +309,62 @@ namespace ScratchFiles.Services
             string fileName = Path.GetFileName(sourcePath);
             string destPath = Path.Combine(destinationFolder, fileName);
 
-            // Avoid overwriting an existing file
+            // If file exists, auto-rename with next available number
             if (File.Exists(destPath))
             {
-                return null;
+                destPath = GetUniqueDestinationPath(sourcePath, destinationFolder);
             }
 
             File.Move(sourcePath, destPath);
             return destPath;
+        }
+
+        /// <summary>
+        /// Generates a unique destination path by incrementing the number in the filename.
+        /// </summary>
+        private static string GetUniqueDestinationPath(string sourcePath, string destinationFolder)
+        {
+            string fileName = Path.GetFileName(sourcePath);
+            string extension = Path.GetExtension(sourcePath);
+            Match match = _numberPattern.Match(fileName);
+
+            string prefix;
+            if (match.Success)
+            {
+                // File has a number pattern (e.g., "scratch1.cs") - use existing prefix
+                prefix = match.Groups["prefix"].Value;
+            }
+            else
+            {
+                // No number pattern - use filename without extension as prefix
+                prefix = Path.GetFileNameWithoutExtension(sourcePath);
+            }
+
+            int nextNum = GetNextNumber(destinationFolder, prefix);
+            return Path.Combine(destinationFolder, $"{prefix}{nextNum}{extension}");
+        }
+
+        /// <summary>
+        /// Moves a scratch file to the other scope (Global to Solution or Solution to Global).
+        /// Returns the new file path, or null if the move failed or no solution is open.
+        /// </summary>
+        public static string MoveToScope(string sourcePath, ScratchScope targetScope)
+        {
+            if (!IsScratchFile(sourcePath) || !File.Exists(sourcePath))
+            {
+                return null;
+            }
+
+            string targetFolder = targetScope == ScratchScope.Solution
+                ? GetSolutionScratchFolder()
+                : GetGlobalScratchFolder();
+
+            if (targetFolder == null)
+            {
+                return null;
+            }
+
+            return MoveScratchFile(sourcePath, targetFolder);
         }
 
         /// <summary>
@@ -390,6 +439,61 @@ namespace ScratchFiles.Services
             }
 
             Directory.Move(oldPath, newPath);
+            return newPath;
+        }
+
+        /// <summary>
+        /// Moves a folder and all its contents to a new parent folder.
+        /// Returns the new folder path, or null if the move failed.
+        /// </summary>
+        public static string MoveFolder(string sourceFolderPath, string destinationParentFolder)
+        {
+            if (string.IsNullOrWhiteSpace(sourceFolderPath) || !Directory.Exists(sourceFolderPath))
+            {
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(destinationParentFolder))
+            {
+                return null;
+            }
+
+            // Safety: only move folders inside a scratch root
+            string fullSourcePath = Path.GetFullPath(sourceFolderPath);
+            string globalRoot = GetGlobalScratchFolderPath();
+            string solutionRoot = GetSolutionScratchFolderPath();
+
+            bool sourceInsideGlobal = fullSourcePath.StartsWith(globalRoot, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(fullSourcePath, globalRoot, StringComparison.OrdinalIgnoreCase);
+
+            bool sourceInsideSolution = solutionRoot != null
+                && fullSourcePath.StartsWith(solutionRoot, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(fullSourcePath, solutionRoot, StringComparison.OrdinalIgnoreCase);
+
+            if (!sourceInsideGlobal && !sourceInsideSolution)
+            {
+                return null;
+            }
+
+            // Prevent moving a folder into itself or its descendants
+            string fullDestPath = Path.GetFullPath(destinationParentFolder);
+            if (fullDestPath.StartsWith(fullSourcePath, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            Directory.CreateDirectory(destinationParentFolder);
+
+            string folderName = Path.GetFileName(sourceFolderPath);
+            string newPath = Path.Combine(destinationParentFolder, folderName);
+
+            // Avoid overwriting an existing folder
+            if (Directory.Exists(newPath))
+            {
+                return null;
+            }
+
+            Directory.Move(sourceFolderPath, newPath);
             return newPath;
         }
 

@@ -1,14 +1,14 @@
+using Microsoft.Internal.VisualStudio.PlatformUI;
+using Microsoft.VisualStudio.Imaging;
+using Microsoft.VisualStudio.PlatformUI;
+using Microsoft.VisualStudio.Shell.Interop;
+
 using System.ComponentModel.Design;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-
-using Microsoft.Internal.VisualStudio.PlatformUI;
-using Microsoft.VisualStudio.Imaging;
-using Microsoft.VisualStudio.PlatformUI;
-using Microsoft.VisualStudio.Shell.Interop;
 
 namespace ScratchFiles.ToolWindows
 {
@@ -111,6 +111,8 @@ namespace ScratchFiles.ToolWindows
             /// </summary>
             public override void ProvideSearchSettings(IVsUIDataSource pSearchSettings)
             {
+                ThreadHelper.ThrowIfNotOnUIThread();
+
                 Utilities.SetValue(pSearchSettings,
                     SearchSettingsDataSource.SearchStartTypeProperty.Name,
                     (uint)VSSEARCHSTARTTYPE.SST_INSTANT);
@@ -119,9 +121,38 @@ namespace ScratchFiles.ToolWindows
                     SearchSettingsDataSource.SearchStartMinCharsProperty.Name,
                     (uint)1);
 
+                string shortcut = GetCommandShortcut("Window.WindowSearch");
+                string watermark = string.IsNullOrEmpty(shortcut) ? "Search" : $"Search ({shortcut})";
+
                 Utilities.SetValue(pSearchSettings,
                     SearchSettingsDataSource.SearchWatermarkProperty.Name,
-                    "Ctrl+F");
+                    watermark);
+            }
+
+            private static string GetCommandShortcut(string commandName)
+            {
+                ThreadHelper.ThrowIfNotOnUIThread();
+
+                try
+                {
+                    var dte = ServiceProvider.GlobalProvider.GetService(typeof(EnvDTE.DTE)) as EnvDTE80.DTE2;
+                    EnvDTE.Command command = dte?.Commands.Item(commandName);
+
+                    if (command?.Bindings is object[] bindings && bindings.Length > 0)
+                    {
+                        // Return the first binding, strip scope prefix if present (e.g., "Global::Ctrl+E")
+                        string binding = bindings[0].ToString();
+                        int scopeEnd = binding.IndexOf("::", StringComparison.Ordinal);
+
+                        return scopeEnd >= 0 ? binding.Substring(scopeEnd + 2) : binding;
+                    }
+                }
+                catch
+                {
+                    // Ignore errors - just return null to use default watermark
+                }
+
+                return null;
             }
         }
 
