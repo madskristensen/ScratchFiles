@@ -194,7 +194,7 @@ public sealed class LanguageDetectionServiceDetectTests
 
         Assert.IsNotNull(result);
         Assert.AreEqual("CSharp", result.LanguageName);
-        Assert.IsTrue(result.Confidence > 1, "Multiple pattern matches should yield confidence > 1");
+        Assert.IsGreaterThan(1, result.Confidence, "Multiple pattern matches should yield confidence > 1");
     }
 
     [TestMethod]

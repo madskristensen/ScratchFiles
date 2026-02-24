@@ -10,7 +10,7 @@ public sealed class GetAvailableLanguagesTests
     {
         IReadOnlyList<LanguageOption> languages = LanguageDetectionService.GetAvailableLanguages();
 
-        Assert.IsTrue(languages.Count > 0);
+        Assert.IsNotEmpty(languages);
     }
 
     [TestMethod]
@@ -44,8 +44,8 @@ public sealed class GetAvailableLanguagesTests
                 $"DisplayName should not be empty for extension {language.Extension}");
             Assert.IsFalse(string.IsNullOrWhiteSpace(language.Extension),
                 $"Extension should not be empty for language {language.DisplayName}");
-            Assert.IsTrue(language.Extension.StartsWith("."),
-                $"Extension '{language.Extension}' should start with a dot");
+            Assert.StartsWith(".",
+language.Extension, $"Extension '{language.Extension}' should start with a dot");
         }
     }
 
