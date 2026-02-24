@@ -737,6 +737,7 @@ namespace ScratchFiles.Services
 
         /// <summary>
         /// Returns the immediate files in a folder (non-recursive), sorted by name.
+        /// Excludes internal files like .session.json.
         /// </summary>
         public static IReadOnlyList<string> GetFilesInFolder(string folder)
         {
@@ -746,6 +747,7 @@ namespace ScratchFiles.Services
             }
 
             return Directory.GetFiles(folder)
+                .Where(f => !f.EndsWith(".session.json", StringComparison.OrdinalIgnoreCase))
                 .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
         }
