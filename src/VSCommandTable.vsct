@@ -93,7 +93,7 @@
 			<!-- New Scratch File To The Side (Ctrl+Alt+N) - opens in vertical tab group -->
 			<Button guid="ScratchFiles" id="NewScratchFileToTheSide" priority="0x0200" type="Button">
 				<Parent guid="ScratchFiles" id="FileMenuGroup"/>
-				<Icon guid="ImageCatalogGuid" id="SplitScreenVertically"/>
+				<Icon guid="ImageCatalogGuid" id="SideBySide"/>
 				<CommandFlag>IconIsMoniker</CommandFlag>
 				<Strings>
 					<ButtonText>New Scratch File To The Side</ButtonText>
@@ -160,7 +160,7 @@
 			<!-- Context menu: Open To The Side (Alt+Enter) - opens in vertical tab group -->
 			<Button guid="ScratchFiles" id="ContextOpenToTheSide" priority="0x0150" type="Button">
 				<Parent guid="ScratchFiles" id="TreeContextMenuGroup"/>
-				<Icon guid="ImageCatalogGuid" id="SplitScreenVertically"/>
+				<Icon guid="ImageCatalogGuid" id="SideBySide"/>
 				<CommandFlag>IconIsMoniker</CommandFlag>
 				<Strings>
 					<ButtonText>Open To The Side</ButtonText>
