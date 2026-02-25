@@ -32,6 +32,7 @@ namespace ScratchFiles.ToolWindows
         private FileSystemWatcher _solutionWatcher;
         private CancellationTokenSource _refreshDebounce;
         private readonly object _refreshLock = new object();
+        private string _pendingSelectionPath;
 
         public ScratchFilesToolWindowControl()
         {
@@ -288,6 +289,280 @@ namespace ScratchFiles.ToolWindows
         }
 
         /// <summary>
+        /// Refreshes the tree view and selects the specified file or folder by path.
+        /// </summary>
+        internal static void RefreshAndSelectPath(string path)
+        {
+            if (_instance == null || string.IsNullOrEmpty(path))
+            {
+                return;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[ScratchFiles] RefreshAndSelectPath called with: {path}");
+
+            // Set the pending selection path - this will be applied after ANY refresh (including file watcher refreshes)
+            _instance._pendingSelectionPath = path;
+
+            // Cancel any pending debounced refreshes from file system watcher
+            lock (_instance._refreshLock)
+            {
+                _instance._refreshDebounce?.Cancel();
+                _instance._refreshDebounce = null;
+            }
+
+            // Temporarily disable file system watchers to prevent new refresh events
+            _instance.DisableWatchers();
+
+            _instance.RefreshTree();
+
+            // Clear the pending selection after a delay (once all refreshes have settled)
+            _instance.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                System.Diagnostics.Debug.WriteLine($"[ScratchFiles] Clearing pending selection and re-enabling watchers");
+                _instance._pendingSelectionPath = null;
+                _instance.EnableWatchers();
+            }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+        }
+
+        /// <summary>
+        /// Temporarily disables file system watchers.
+        /// </summary>
+        private void DisableWatchers()
+        {
+            if (_globalWatcher != null)
+            {
+                _globalWatcher.EnableRaisingEvents = false;
+            }
+
+            if (_solutionWatcher != null)
+            {
+                _solutionWatcher.EnableRaisingEvents = false;
+            }
+        }
+
+        /// <summary>
+        /// Re-enables file system watchers.
+        /// </summary>
+        private void EnableWatchers()
+        {
+            if (_globalWatcher != null)
+            {
+                _globalWatcher.EnableRaisingEvents = true;
+            }
+
+            if (_solutionWatcher != null)
+            {
+                _solutionWatcher.EnableRaisingEvents = true;
+            }
+        }
+
+        /// <summary>
+        /// Gets the path of the node that should be selected after the specified node is deleted.
+        /// Returns the previous sibling, next sibling, or parent path.
+        /// </summary>
+        internal static string GetPathToSelectAfterDeletion(ScratchNodeBase nodeToDelete)
+        {
+            if (nodeToDelete == null)
+            {
+                return null;
+            }
+
+            // Get the path and parent directory of the node being deleted
+            string deletedPath = GetNodePath(nodeToDelete);
+
+            if (string.IsNullOrEmpty(deletedPath))
+            {
+                return null;
+            }
+
+            // For files: get sibling files in the same directory
+            if (nodeToDelete is ScratchFileNode)
+            {
+                string parentDir = Path.GetDirectoryName(deletedPath);
+
+                if (Directory.Exists(parentDir))
+                {
+                    // Get all files in the parent directory (sorted the same way the tree builds)
+                    IReadOnlyList<string> files = ScratchFileService.GetFilesInFolder(parentDir);
+
+                    if (files.Count > 0)
+                    {
+                        // Find the index of the file being deleted
+                        int deleteIndex = -1;
+                        for (int i = 0; i < files.Count; i++)
+                        {
+                            if (string.Equals(files[i], deletedPath, StringComparison.OrdinalIgnoreCase))
+                            {
+                                deleteIndex = i;
+                                break;
+                            }
+                        }
+
+                        if (deleteIndex >= 0)
+                        {
+                            // Try to select the previous file (node above)
+                            if (deleteIndex > 0)
+                            {
+                                return files[deleteIndex - 1];
+                            }
+
+                            // Try to select the next file
+                            if (deleteIndex < files.Count - 1)
+                            {
+                                return files[deleteIndex + 1];
+                            }
+                        }
+                    }
+
+                    // No siblings - select the parent folder if it's not the root
+                    string globalRoot = ScratchFileService.GetGlobalScratchFolder();
+                    string solutionRoot = ScratchFileService.GetSolutionScratchFolder();
+
+                    if (!string.Equals(parentDir, globalRoot, StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(parentDir, solutionRoot, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return parentDir;
+                    }
+                }
+            }
+            // For folders: get sibling folders in the same parent directory
+            else if (nodeToDelete is ScratchFolderNode)
+            {
+                string parentDir = Path.GetDirectoryName(deletedPath);
+
+                if (Directory.Exists(parentDir))
+                {
+                    // Get all subfolders in the parent directory
+                    IReadOnlyList<string> folders = ScratchFileService.GetSubFolders(parentDir);
+
+                    if (folders.Count > 0)
+                    {
+                        // Find the index of the folder being deleted
+                        int deleteIndex = -1;
+                        for (int i = 0; i < folders.Count; i++)
+                        {
+                            if (string.Equals(folders[i], deletedPath, StringComparison.OrdinalIgnoreCase))
+                            {
+                                deleteIndex = i;
+                                break;
+                            }
+                        }
+
+                        if (deleteIndex >= 0)
+                        {
+                            // Try to select the previous folder (node above)
+                            if (deleteIndex > 0)
+                            {
+                                return folders[deleteIndex - 1];
+                            }
+
+                            // Try to select the next folder
+                            if (deleteIndex < folders.Count - 1)
+                            {
+                                return folders[deleteIndex + 1];
+                            }
+                        }
+                    }
+
+                    // Check if there are any files to select instead
+                    IReadOnlyList<string> files = ScratchFileService.GetFilesInFolder(parentDir);
+                    if (files.Count > 0)
+                    {
+                        return files[files.Count - 1]; // Select the last file
+                    }
+
+                    // No siblings - select the parent folder if it's not the root
+                    string globalRoot = ScratchFileService.GetGlobalScratchFolder();
+                    string solutionRoot = ScratchFileService.GetSolutionScratchFolder();
+
+                    if (!string.Equals(parentDir, globalRoot, StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(parentDir, solutionRoot, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return parentDir;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static ScratchNodeBase FindParentOfNode(ScratchNodeBase target)
+        {
+            if (_instance == null)
+            {
+                return null;
+            }
+
+            foreach (ScratchNodeBase rootNode in _instance.RootNodes)
+            {
+                if (rootNode.Children.Contains(target))
+                {
+                    return rootNode;
+                }
+
+                ScratchNodeBase parent = FindParentRecursive(rootNode, target);
+
+                if (parent != null)
+                {
+                    return parent;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Finds the parent node of the specified target node in the tree.
+        /// </summary>
+        internal static ScratchNodeBase FindParentNode(ScratchNodeBase target)
+        {
+            return FindParentOfNode(target);
+        }
+
+        /// <summary>
+        /// Gets the file or folder path from a tree node.
+        /// </summary>
+        internal static string GetNodePath(ScratchNodeBase node)
+        {
+            if (node is ScratchFileNode fileNode)
+            {
+                return fileNode.FilePath;
+            }
+
+            if (node is ScratchFolderNode folderNode)
+            {
+                return folderNode.FolderPath;
+            }
+
+            if (node is ScratchGroupNode groupNode)
+            {
+                return groupNode.FolderPath;
+            }
+
+            return null;
+        }
+
+        private static ScratchNodeBase FindParentRecursive(ScratchNodeBase parent, ScratchNodeBase target)
+        {
+            foreach (ScratchNodeBase child in parent.Children)
+            {
+                if (child.Children.Contains(target))
+                {
+                    return child;
+                }
+
+                ScratchNodeBase found = FindParentRecursive(child, target);
+
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// Configures the TreeView data template in code to match the Azure Explorer pattern. Uses CrispImage for file
         /// extension icons + TextBlock for label + description.
         /// </summary>
@@ -370,6 +645,19 @@ namespace ScratchFiles.ToolWindows
             bool hasFiles = allFiles.Count > 0;
             ScratchTree.Visibility = hasFiles ? Visibility.Visible : Visibility.Collapsed;
             EmptyStatePanel.Visibility = hasFiles ? Visibility.Collapsed : Visibility.Visible;
+
+            // Apply any pending selection after refresh completes
+            if (!string.IsNullOrEmpty(_pendingSelectionPath))
+            {
+                string pathToSelect = _pendingSelectionPath;
+                System.Diagnostics.Debug.WriteLine($"[ScratchFiles] RefreshTree: Applying pending selection for: {pathToSelect}");
+
+                // Schedule selection after layout completes
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    SelectNodeByPath(pathToSelect);
+                }), System.Windows.Threading.DispatcherPriority.Loaded);
+            }
         }
 
         /// <summary>
@@ -566,18 +854,51 @@ namespace ScratchFiles.ToolWindows
                     return;
                 }
 
-                // Check children
+                // Search recursively through all children
                 rootItem.UpdateLayout();
 
-                TreeViewItem childItem = rootItem.ItemContainerGenerator.ContainerFromItem(node) as TreeViewItem;
-
-                if (childItem != null)
+                if (SelectNodeInSubtree(rootItem, node))
                 {
-                    childItem.IsSelected = true;
-                    childItem.Focus();
                     return;
                 }
             }
+        }
+
+        private bool SelectNodeInSubtree(TreeViewItem parentItem, ScratchNodeBase targetNode)
+        {
+            // Check all children of this item
+            ScratchNodeBase parentData = parentItem.DataContext as ScratchNodeBase;
+
+            if (parentData == null)
+            {
+                return false;
+            }
+
+            foreach (ScratchNodeBase child in parentData.Children)
+            {
+                TreeViewItem childItem = parentItem.ItemContainerGenerator.ContainerFromItem(child) as TreeViewItem;
+
+                if (childItem != null)
+                {
+                    if (child == targetNode)
+                    {
+                        childItem.IsSelected = true;
+                        childItem.Focus();
+                        childItem.BringIntoView();
+                        return true;
+                    }
+
+                    // Recursively search this child's subtree
+                    childItem.UpdateLayout();
+
+                    if (SelectNodeInSubtree(childItem, targetNode))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -602,6 +923,111 @@ namespace ScratchFiles.ToolWindows
 
                 SelectNodeInTree(fileNode);
             }
+        }
+
+        /// <summary>
+        /// Finds and selects a node (file or folder) by its path.
+        /// </summary>
+        private void SelectNodeByPath(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                System.Diagnostics.Debug.WriteLine("[ScratchFiles] SelectNodeByPath: path is null or empty");
+                return;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[ScratchFiles] SelectNodeByPath: Looking for path: {path}");
+
+            // Clear all existing selections first
+            ClearAllSelections();
+
+            ScratchNodeBase node = FindNodeByPath(path);
+
+            if (node != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ScratchFiles] SelectNodeByPath: Found node: {node.Label}");
+
+                // Expand parent groups/folders to make the node visible
+                ExpandParentsOf(node);
+
+                // Set IsSelected on the data model - the binding will update the UI
+                node.IsSelected = true;
+
+                System.Diagnostics.Debug.WriteLine($"[ScratchFiles] SelectNodeByPath: Set IsSelected=true on node: {node.Label}");
+
+                // Ensure the TreeView has focus
+                ScratchTree.Focus();
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[ScratchFiles] SelectNodeByPath: Node NOT FOUND for path: {path}");
+                System.Diagnostics.Debug.WriteLine($"[ScratchFiles] Current tree has {RootNodes.Count} root nodes");
+
+                foreach (var root in RootNodes)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ScratchFiles]   Root: {root.Label} with {root.Children.Count} children");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Clears IsSelected on all nodes in the tree.
+        /// </summary>
+        private void ClearAllSelections()
+        {
+            foreach (ScratchNodeBase rootNode in RootNodes)
+            {
+                ClearSelectionRecursive(rootNode);
+            }
+        }
+
+        private static void ClearSelectionRecursive(ScratchNodeBase node)
+        {
+            node.IsSelected = false;
+
+            foreach (ScratchNodeBase child in node.Children)
+            {
+                ClearSelectionRecursive(child);
+            }
+        }
+
+        private ScratchNodeBase FindNodeByPath(string path)
+        {
+            foreach (ScratchNodeBase group in RootNodes)
+            {
+                ScratchNodeBase found = FindNodeByPathRecursive(group, path);
+
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+
+            return null;
+        }
+
+        private static ScratchNodeBase FindNodeByPathRecursive(ScratchNodeBase node, string path)
+        {
+            // Check if this node matches the path
+            string nodePath = GetNodePath(node);
+
+            if (nodePath != null && string.Equals(nodePath, path, StringComparison.OrdinalIgnoreCase))
+            {
+                return node;
+            }
+
+            // Check children
+            foreach (ScratchNodeBase child in node.Children)
+            {
+                ScratchNodeBase found = FindNodeByPathRecursive(child, path);
+
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+
+            return null;
         }
 
         private ScratchFileNode FindFileNodeByPath(string filePath)

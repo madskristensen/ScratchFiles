@@ -32,12 +32,8 @@ namespace ScratchFiles.Commands
                 : ScratchScope.Global;
 
             string filePath = await ScratchFileService.CreateScratchFileAsync(scope);
+            // InfoBar is attached by DocumentEventHandler.OnBeforeDocumentWindowShow
             DocumentView docView = await VS.Documents.OpenAsync(filePath);
-
-            if (docView != null)
-            {
-                await ScratchFileInfoBar.AttachAsync(docView);
-            }
 
             ScratchFilesToolWindowControl.RefreshAndSelect(filePath);
 

@@ -46,7 +46,7 @@ namespace ScratchFiles.Commands
 
             if (docView != null)
             {
-                await ScratchFileInfoBar.AttachAsync(docView);
+                // InfoBar is attached by DocumentEventHandler.OnBeforeDocumentWindowShow
 
                 // Track buffer for auto-save and session persistence
                 if (docView.TextView?.TextBuffer != null)

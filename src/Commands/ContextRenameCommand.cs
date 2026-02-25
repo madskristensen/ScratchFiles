@@ -51,11 +51,26 @@ namespace ScratchFiles.Commands
             if (!string.IsNullOrWhiteSpace(newName) && !string.Equals(newName, currentName, StringComparison.OrdinalIgnoreCase))
             {
                 string oldPath = fileNode.FilePath;
+
+                // Check if the file is open and close it before renaming
+                DocumentView openDoc = await VS.Documents.GetDocumentViewAsync(oldPath);
+                bool wasOpen = openDoc != null;
+
+                if (wasOpen)
+                {
+                    await openDoc.WindowFrame.CloseFrameAsync(FrameCloseOption.SaveIfDirty);
+                }
+
                 string newPath = await ScratchFileService.RenameScratchFileAsync(oldPath, newName);
 
                 if (newPath != null)
                 {
-                    // VS will handle closing/reopening the document with a fresh infobar
+                    // Reopen the document if it was open before
+                    if (wasOpen)
+                    {
+                        await VS.Documents.OpenAsync(newPath);
+                    }
+
                     ScratchFilesToolWindowControl.RefreshAll();
                 }
             }

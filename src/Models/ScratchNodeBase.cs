@@ -15,6 +15,7 @@ namespace ScratchFiles.Models
         private string _label;
         private bool _isExpanded;
         private bool _isVisible = true;
+        private bool _isSelected;
 
         protected ScratchNodeBase(string label)
         {
@@ -40,6 +41,15 @@ namespace ScratchFiles.Models
         {
             get => _isVisible;
             set => SetProperty(ref _isVisible, value);
+        }
+
+        /// <summary>
+        /// Controls whether this node is selected in the tree view.
+        /// </summary>
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set => SetProperty(ref _isSelected, value);
         }
 
         /// <summary>
