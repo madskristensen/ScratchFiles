@@ -206,29 +206,6 @@ namespace ScratchFiles.Commands
                 if (!string.IsNullOrEmpty(filePath) && ScratchFileService.IsScratchFile(filePath))
                 {
                     ScratchSessionService.UntrackDocument(filePath);
-
-                    ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
-                    {
-                        try
-                        {
-                            bool shouldDelete = await Task.Run(() =>
-                            {
-                                var fileInfo = new FileInfo(filePath);
-                                return fileInfo.Exists && fileInfo.Length == 0;
-                            });
-
-                            if (shouldDelete)
-                            {
-                                await Task.Run(() => ScratchFileService.DeleteScratchFile(filePath));
-                                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-                                ScratchFilesToolWindowControl.RefreshAll();
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            await ex.LogAsync();
-                        }
-                    }).FireAndForget();
                 }
             }
             catch (Exception ex)

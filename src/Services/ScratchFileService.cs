@@ -178,28 +178,6 @@ namespace ScratchFiles.Services
         }
 
         /// <summary>
-        /// Deletes all empty scratch files (zero-length) from both folders.
-        /// Returns the number of files deleted.
-        /// </summary>
-        public static int DeleteEmptyScratchFiles()
-        {
-            int count = 0;
-
-            foreach (ScratchFileInfo info in GetAllScratchFiles())
-            {
-                var fileInfo = new FileInfo(info.FilePath);
-
-                if (fileInfo.Exists && fileInfo.Length == 0)
-                {
-                    fileInfo.Delete();
-                    count++;
-                }
-            }
-
-            return count;
-        }
-
-        /// <summary>
         /// Renames a scratch file, keeping it in the same folder.
         /// Returns the new full path, or null if the rename failed.
         /// </summary>
