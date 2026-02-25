@@ -57,6 +57,9 @@ namespace ScratchFiles.Commands
                 _rdt.Unadvise(_adviseCookie);
                 _adviseCookie = 0;
             }
+
+            // Dispose the RunningDocumentTable to release COM references
+            (_rdt as IDisposable)?.Dispose();
         }
 
         /// <summary>
@@ -106,8 +109,9 @@ namespace ScratchFiles.Commands
                     }).FireAndForget();
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                ex.Log();
             }
 
             return VSConstants.S_OK;
@@ -132,8 +136,9 @@ namespace ScratchFiles.Commands
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                ex.Log();
             }
 
             return VSConstants.S_OK;
@@ -181,8 +186,9 @@ namespace ScratchFiles.Commands
                     }).FireAndForget();
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                ex.Log();
             }
 
             return VSConstants.S_OK;
@@ -225,8 +231,9 @@ namespace ScratchFiles.Commands
                     }).FireAndForget();
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                ex.Log();
             }
 
             return VSConstants.S_OK;

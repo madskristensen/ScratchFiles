@@ -34,6 +34,19 @@ namespace ScratchFiles.Services
                 return KnownMonikers.Document;
             }
 
+            // Check cache first (thread-safe read)
+            if (_cache.TryGetValue(extension, out ImageMoniker cached))
+            {
+                return cached;
+            }
+
+            // Only resolve on UI thread to avoid COM threading issues
+            if (!ThreadHelper.CheckAccess())
+            {
+                return KnownMonikers.Document;
+            }
+
+            // Resolve and cache (factory only called on UI thread)
             return _cache.GetOrAdd(extension, _ => ResolveMoniker(fileName));
         }
 

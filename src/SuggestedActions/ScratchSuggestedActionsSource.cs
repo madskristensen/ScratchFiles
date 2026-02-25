@@ -17,17 +17,18 @@ namespace ScratchFiles.SuggestedActions
     /// </summary>
     internal sealed class ScratchSuggestedActionsSource : ISuggestedActionsSource2
     {
-        private readonly ITextView _textView;
+        // Use WeakReference to avoid preventing GC if Dispose() isn't called
+        private readonly WeakReference<ITextView> _textViewRef;
         private readonly ISuggestedActionCategoryRegistryService _categoryRegistry;
 
         public ScratchSuggestedActionsSource(
             ITextView textView,
             ISuggestedActionCategoryRegistryService categoryRegistry)
         {
-            _textView = textView;
+            _textViewRef = new WeakReference<ITextView>(textView);
             _categoryRegistry = categoryRegistry;
 
-            _textView.Selection.SelectionChanged += OnSelectionChanged;
+            textView.Selection.SelectionChanged += OnSelectionChanged;
         }
 
         public event EventHandler<EventArgs> SuggestedActionsChanged;
@@ -85,7 +86,10 @@ namespace ScratchFiles.SuggestedActions
 
         public void Dispose()
         {
-            _textView.Selection.SelectionChanged -= OnSelectionChanged;
+            if (_textViewRef.TryGetTarget(out ITextView textView))
+            {
+                textView.Selection.SelectionChanged -= OnSelectionChanged;
+            }
         }
 
         public bool TryGetTelemetryId(out Guid telemetryId)
@@ -103,12 +107,17 @@ namespace ScratchFiles.SuggestedActions
         {
             span = default;
 
-            if (_textView.Selection.IsEmpty)
+            if (!_textViewRef.TryGetTarget(out ITextView textView))
             {
                 return false;
             }
 
-            span = _textView.Selection.SelectedSpans.FirstOrDefault();
+            if (textView.Selection.IsEmpty)
+            {
+                return false;
+            }
+
+            span = textView.Selection.SelectedSpans.FirstOrDefault();
 
             if (span.IsEmpty)
             {
@@ -120,7 +129,12 @@ namespace ScratchFiles.SuggestedActions
 
         private string GetSourceFileExtension()
         {
-            if (_textView.TextBuffer.Properties.TryGetProperty(typeof(ITextDocument), out ITextDocument document)
+            if (!_textViewRef.TryGetTarget(out ITextView textView))
+            {
+                return null;
+            }
+
+            if (textView.TextBuffer.Properties.TryGetProperty(typeof(ITextDocument), out ITextDocument document)
                 && !string.IsNullOrEmpty(document?.FilePath))
             {
                 return Path.GetExtension(document.FilePath);

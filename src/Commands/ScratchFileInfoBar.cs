@@ -100,6 +100,19 @@ namespace ScratchFiles.Commands
             }
         }
 
+        /// <summary>
+        /// Cleans up event handlers and closes the InfoBar.
+        /// </summary>
+        private void CloseAndCleanup()
+        {
+            if (_infoBar != null)
+            {
+                _infoBar.ActionItemClicked -= OnActionItemClicked;
+                _infoBar.Close();
+                _infoBar = null;
+            }
+        }
+
         private void OnActionItemClicked(object sender, InfoBarActionItemEventArgs e)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -172,8 +185,10 @@ namespace ScratchFiles.Commands
 
             if (newPath != null && !string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase))
             {
+                // Clean up event handlers before closing
+                CloseAndCleanup();
+
                 // Close the old document tab (file was already saved and renamed on disk)
-                // VS will dispose the InfoBar automatically
                 if (_docView.WindowFrame != null)
                 {
                     await _docView.WindowFrame.CloseFrameAsync(FrameCloseOption.NoSave);
@@ -206,8 +221,10 @@ namespace ScratchFiles.Commands
 
             if (newPath != null)
             {
+                // Clean up event handlers before closing
+                CloseAndCleanup();
+
                 // Close the old document tab (file was already saved and moved on disk)
-                // VS will dispose the InfoBar automatically
                 if (_docView.WindowFrame != null)
                 {
                     await _docView.WindowFrame.CloseFrameAsync(FrameCloseOption.NoSave);

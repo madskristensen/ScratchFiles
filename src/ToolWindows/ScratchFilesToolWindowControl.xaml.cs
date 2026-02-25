@@ -18,7 +18,7 @@ namespace ScratchFiles.ToolWindows
 {
     public partial class ScratchFilesToolWindowControl : UserControl
     {
-        private static ScratchFilesToolWindowControl _instance;
+        private static volatile ScratchFilesToolWindowControl _instance;
         private static ScratchNodeBase _rightClickedNode;
         private static ScratchNodeBase _selectedNode;
         private Point _dragStartPoint;
@@ -186,13 +186,14 @@ namespace ScratchFiles.ToolWindows
             }
 
             // Debounce rapid changes (e.g., during file saves or batch operations)
+            CancellationToken token;
             lock (_refreshLock)
             {
                 _refreshDebounce?.Cancel();
+                _refreshDebounce?.Dispose();
                 _refreshDebounce = new CancellationTokenSource();
+                token = _refreshDebounce.Token;
             }
-
-            CancellationToken token = _refreshDebounce.Token;
 
             ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
             {

@@ -171,21 +171,38 @@ namespace ScratchFiles.Services
 
     internal sealed class LanguageRule
     {
+        private readonly string[] _patterns;
+        private Regex[] _compiledPatterns;
+
         public LanguageRule(string languageName, string extension, string[] patterns)
         {
             LanguageName = languageName;
             Extension = extension;
-            CompiledPatterns = new Regex[patterns.Length];
-
-            for (int i = 0; i < patterns.Length; i++)
-            {
-                CompiledPatterns[i] = new Regex(patterns[i], RegexOptions.Compiled | RegexOptions.Multiline);
-            }
+            _patterns = patterns;
         }
 
         public string LanguageName { get; }
         public string Extension { get; }
-        public Regex[] CompiledPatterns { get; }
+
+        /// <summary>
+        /// Lazily compiles regex patterns on first access to avoid startup latency.
+        /// </summary>
+        public Regex[] CompiledPatterns
+        {
+            get
+            {
+                if (_compiledPatterns == null)
+                {
+                    var compiled = new Regex[_patterns.Length];
+                    for (int i = 0; i < _patterns.Length; i++)
+                    {
+                        compiled[i] = new Regex(_patterns[i], RegexOptions.Compiled | RegexOptions.Multiline);
+                    }
+                    _compiledPatterns = compiled;
+                }
+                return _compiledPatterns;
+            }
+        }
     }
 
     internal sealed class LanguageDetectionResult

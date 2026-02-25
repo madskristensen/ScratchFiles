@@ -18,6 +18,10 @@ namespace ScratchFiles.Services
         private static readonly ConcurrentDictionary<string, TrackedBuffer> _trackedBuffers
             = new ConcurrentDictionary<string, TrackedBuffer>(StringComparer.OrdinalIgnoreCase);
 
+        // Reverse lookup for O(1) buffer-to-path mapping (avoids O(n) search on every keystroke)
+        private static readonly ConcurrentDictionary<ITextBuffer, string> _bufferToPath
+            = new ConcurrentDictionary<ITextBuffer, string>();
+
         /// <summary>
         /// Begins tracking a scratch file for auto-save and session persistence.
         /// </summary>
@@ -43,6 +47,7 @@ namespace ScratchFiles.Services
 
             if (_trackedBuffers.TryAdd(filePath, tracked))
             {
+                _bufferToPath.TryAdd(buffer, filePath);
                 buffer.Changed += OnBufferChanged;
 
                 // Add to session tracking
@@ -62,6 +67,7 @@ namespace ScratchFiles.Services
 
             if (_trackedBuffers.TryRemove(filePath, out TrackedBuffer tracked))
             {
+                _bufferToPath.TryRemove(tracked.Buffer, out _);
                 tracked.Buffer.Changed -= OnBufferChanged;
                 tracked.CancelPendingSync();
                 tracked.Dispose();
@@ -140,14 +146,11 @@ namespace ScratchFiles.Services
                 return;
             }
 
-            // Find the tracked buffer
-            foreach (var kvp in _trackedBuffers)
+            // O(1) lookup using reverse dictionary instead of O(n) iteration
+            if (_bufferToPath.TryGetValue(buffer, out string filePath) &&
+                _trackedBuffers.TryGetValue(filePath, out TrackedBuffer tracked))
             {
-                if (kvp.Value.Buffer == buffer)
-                {
-                    ScheduleDebouncedAutoSave(kvp.Key, kvp.Value);
-                    break;
-                }
+                ScheduleDebouncedAutoSave(filePath, tracked);
             }
         }
 
