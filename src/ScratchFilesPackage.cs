@@ -55,7 +55,6 @@ namespace ScratchFiles
         {
             if (disposing)
             {
-                ScratchFileInfoBar.ClearAll();
                 DocumentEventHandler.Shutdown();
             }
 

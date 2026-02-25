@@ -893,7 +893,7 @@ namespace ScratchFiles.ToolWindows
                             if (newPath != null)
                             {
                                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-                                ScratchFileInfoBar.UpdatePath(oldPath, newPath);
+                                // VS will handle the InfoBar lifecycle automatically
                                 RefreshAll();
                             }
                         }

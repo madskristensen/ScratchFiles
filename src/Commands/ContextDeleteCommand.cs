@@ -30,7 +30,7 @@ namespace ScratchFiles.Commands
             {
                 if (await VS.MessageBox.ShowConfirmAsync("Delete Scratch File", $"Delete '{fileNode.Label}'?"))
                 {
-                    ScratchFileInfoBar.Detach(fileNode.FilePath);
+                    // VS will dispose the InfoBar automatically when the document is closed
                     await ScratchFileService.DeleteScratchFileAsync(fileNode.FilePath);
                     ScratchFilesToolWindowControl.RefreshAll();
                 }

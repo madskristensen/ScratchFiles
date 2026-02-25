@@ -55,7 +55,7 @@ namespace ScratchFiles.Commands
 
                 if (newPath != null)
                 {
-                    ScratchFileInfoBar.UpdatePath(oldPath, newPath);
+                    // VS will handle closing/reopening the document with a fresh infobar
                     ScratchFilesToolWindowControl.RefreshAll();
                 }
             }

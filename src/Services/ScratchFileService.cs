@@ -98,6 +98,12 @@ namespace ScratchFiles.Services
                 return true;
             }
 
+            // If solutionFolder not provided, try to get it automatically
+            if (solutionFolder == null)
+            {
+                solutionFolder = GetSolutionScratchFolderPath();
+            }
+
             return solutionFolder != null
                 && fullPath.StartsWith(solutionFolder, StringComparison.OrdinalIgnoreCase);
         }

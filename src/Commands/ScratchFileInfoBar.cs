@@ -16,13 +16,9 @@ namespace ScratchFiles.Commands
     /// </summary>
     internal sealed class ScratchFileInfoBar
     {
-        private static readonly Dictionary<string, ScratchFileInfoBar> _activeBars =
-            new Dictionary<string, ScratchFileInfoBar>(StringComparer.OrdinalIgnoreCase);
-
         private readonly DocumentView _docView;
         private readonly string _filePath;
         private InfoBar _infoBar;
-        private bool _isDetached;
 
         private ScratchFileInfoBar(DocumentView docView, string filePath)
         {
@@ -56,72 +52,8 @@ namespace ScratchFiles.Commands
                 return;
             }
 
-            // Don't attach a duplicate
-            if (_activeBars.ContainsKey(filePath))
-            {
-                return;
-            }
-
             var handler = new ScratchFileInfoBar(docView, filePath);
             await handler.ShowAsync();
-            _activeBars[filePath] = handler;
-        }
-
-        /// <summary>
-        /// Removes the InfoBar for the given file path if one exists.
-        /// </summary>
-        public static void Detach(string filePath)
-        {
-            if (filePath != null && _activeBars.TryGetValue(filePath, out ScratchFileInfoBar handler))
-            {
-                handler._isDetached = true;
-                handler._infoBar?.Close();
-                _activeBars.Remove(filePath);
-            }
-        }
-
-        /// <summary>
-        /// Updates the tracking key when a scratch file is renamed/moved on disk.
-        /// </summary>
-        public static void UpdatePath(string oldPath, string newPath)
-        {
-            if (oldPath != null && _activeBars.TryGetValue(oldPath, out ScratchFileInfoBar handler))
-            {
-                _activeBars.Remove(oldPath);
-
-                if (ScratchFileService.IsScratchFile(newPath))
-                {
-                    _activeBars[newPath] = handler;
-                }
-                else
-                {
-                    handler._isDetached = true;
-                    handler._infoBar?.Close();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Checks if the given file has an active InfoBar.
-        /// </summary>
-        public static bool HasInfoBar(string filePath)
-        {
-            return filePath != null && _activeBars.ContainsKey(filePath);
-        }
-
-        /// <summary>
-        /// Closes all active InfoBars and clears the tracking dictionary.
-        /// Call on solution close or package dispose to prevent memory leaks.
-        /// </summary>
-        public static void ClearAll()
-        {
-            foreach (ScratchFileInfoBar handler in _activeBars.Values)
-            {
-                handler._isDetached = true;
-                handler._infoBar?.Close();
-            }
-
-            _activeBars.Clear();
         }
 
         private async Task ShowAsync()
@@ -171,11 +103,6 @@ namespace ScratchFiles.Commands
         private void OnActionItemClicked(object sender, InfoBarActionItemEventArgs e)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-
-            if (_isDetached)
-            {
-                return;
-            }
 
             string context = e.ActionItem.ActionContext as string;
 
@@ -245,22 +172,14 @@ namespace ScratchFiles.Commands
 
             if (newPath != null && !string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase))
             {
-                Detach(oldPath);
-
                 // Close the old document tab (file was already saved and renamed on disk)
+                // VS will dispose the InfoBar automatically
                 if (_docView.WindowFrame != null)
                 {
                     await _docView.WindowFrame.CloseFrameAsync(FrameCloseOption.NoSave);
                 }
 
                 await VS.Documents.OpenAsync(newPath);
-
-                DocumentView newDocView = await VS.Documents.GetDocumentViewAsync(newPath);
-
-                if (newDocView != null)
-                {
-                    await AttachAsync(newDocView);
-                }
 
                 ScratchFilesToolWindowControl.RefreshAll();
             }
@@ -270,35 +189,31 @@ namespace ScratchFiles.Commands
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
 
-            string oldPath = _docView.Document.FilePath;
+            // Use _filePath as fallback if Document is null
+            string oldPath = _docView.Document?.FilePath ?? _filePath;
             ScratchScope currentScope = ScratchFileService.GetScope(oldPath);
             ScratchScope targetScope = currentScope == ScratchScope.Solution
                 ? ScratchScope.Global
                 : ScratchScope.Solution;
 
             // Save unsaved edits to disk before moving
-            _docView.Document.Save();
+            if (_docView.Document != null)
+            {
+                _docView.Document.Save();
+            }
 
             string newPath = await ScratchFileService.MoveToScopeAsync(oldPath, targetScope);
 
             if (newPath != null)
             {
-                Detach(oldPath);
-
                 // Close the old document tab (file was already saved and moved on disk)
+                // VS will dispose the InfoBar automatically
                 if (_docView.WindowFrame != null)
                 {
                     await _docView.WindowFrame.CloseFrameAsync(FrameCloseOption.NoSave);
                 }
 
                 await VS.Documents.OpenAsync(newPath);
-
-                DocumentView newDocView = await VS.Documents.GetDocumentViewAsync(newPath);
-
-                if (newDocView != null)
-                {
-                    await AttachAsync(newDocView);
-                }
 
                 ScratchFilesToolWindowControl.RefreshAll();
             }
@@ -308,7 +223,8 @@ namespace ScratchFiles.Commands
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
 
-            string currentPath = _docView.Document?.FilePath;
+            // Use _filePath as fallback if Document is null
+            string currentPath = _docView.Document?.FilePath ?? _filePath;
 
             if (string.IsNullOrEmpty(currentPath))
             {
@@ -350,9 +266,7 @@ namespace ScratchFiles.Commands
             // Open the new file in VS
             await VS.Documents.OpenAsync(newPath);
 
-            // Detach InfoBar and clean up the old scratch file
-            Detach(_filePath);
-
+            // Clean up the old scratch file if it's different from the new path
             if (!string.Equals(_filePath, newPath, StringComparison.OrdinalIgnoreCase))
             {
                 await ScratchFileService.DeleteScratchFileAsync(_filePath);
@@ -398,135 +312,72 @@ namespace ScratchFiles.Commands
                 return;
             }
 
-            // Show a suggestion InfoBar
-            if (_activeBars.TryGetValue(filePath, out ScratchFileInfoBar handler) && handler._infoBar != null)
-            {
-                // Close the existing InfoBar and show one with the detection suggestion
-                handler._infoBar.Close();
+            // Get the document view to show detection infobar
+            DocumentView docView = await VS.Documents.GetDocumentViewAsync(filePath);
 
-                DocumentView docView = await VS.Documents.GetDocumentViewAsync(filePath);
-
-                if (docView == null)
-                {
-                    return;
-                }
-
-                var model = new InfoBarModel(
-                    new IVsInfoBarTextSpan[]
-                    {
-                        new InfoBarTextSpan("Detected: "),
-                        new InfoBarTextSpan(result.LanguageName, true),
-                    },
-                    new IVsInfoBarActionItem[]
-                    {
-                        new InfoBarHyperlink("Apply", $"apply_{result.Extension}"),
-                        new InfoBarHyperlink("Dismiss", "dismiss"),
-                        new InfoBarHyperlink("Change Language", "change_language"),
-                        new InfoBarHyperlink("Save As...", "save_as"),
-                    },
-                    KnownMonikers.StatusInformation,
-                    isCloseButtonVisible: true);
-
-                handler._infoBar = await VS.InfoBar.CreateAsync(docView.WindowFrame, model);
-
-                if (handler._infoBar != null)
-                {
-                    handler._infoBar.ActionItemClicked += handler.OnDetectionActionClicked;
-                    await handler._infoBar.TryShowInfoBarUIAsync();
-                }
-            }
-        }
-
-        private void OnDetectionActionClicked(object sender, InfoBarActionItemEventArgs e)
-        {
-            ThreadHelper.ThrowIfNotOnUIThread();
-
-            if (_isDetached)
+            if (docView?.WindowFrame == null)
             {
                 return;
             }
 
-            string context = e.ActionItem.ActionContext as string;
-
-            if (context == "dismiss")
-            {
-                // Re-show the standard InfoBar
-                ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+            // Show a language detection suggestion InfoBar
+            var model = new InfoBarModel(
+                new IVsInfoBarTextSpan[]
                 {
-                    _infoBar?.Close();
-                    await ShowAsync();
-                }).FireAndForget();
-            }
-            else if (context?.StartsWith("apply_", StringComparison.Ordinal) == true)
-            {
-                string extension = context.Substring("apply_".Length);
-
-                ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+                    new InfoBarTextSpan("Detected: "),
+                    new InfoBarTextSpan(result.LanguageName, true),
+                },
+                new IVsInfoBarActionItem[]
                 {
-                    try
-                    {
-                        await ApplyDetectedLanguageAsync(extension);
-                    }
-                    catch (Exception ex)
-                    {
-                        await ex.LogAsync();
-                    }
-                }).FireAndForget();
-            }
-            else if (context == "change_language")
+                    new InfoBarHyperlink("Apply", $"apply_{result.Extension}"),
+                    new InfoBarHyperlink("Dismiss", "dismiss"),
+                },
+                KnownMonikers.StatusInformation,
+                isCloseButtonVisible: true);
+
+            InfoBar detectionBar = await VS.InfoBar.CreateAsync(docView.WindowFrame, model);
+
+            if (detectionBar != null)
             {
-                ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+                detectionBar.ActionItemClicked += async (s, e) =>
                 {
-                    try
+                    string context = e.ActionItem.ActionContext as string;
+
+                    if (context == "dismiss")
                     {
-                        await ChangeLanguageAsync();
+                        detectionBar.Close();
                     }
-                    catch (Exception ex)
+                    else if (context?.StartsWith("apply_", StringComparison.Ordinal) == true)
                     {
-                        await ex.LogAsync();
+                        string extension = context.Substring("apply_".Length);
+                        detectionBar.Close();
+
+                        await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+
+                        try
+                        {
+                            if (docView.Document != null)
+                            {
+                                docView.Document.Save();
+                            }
+
+                            string newPath = await ScratchFileService.ChangeExtensionAsync(filePath, extension);
+
+                            if (newPath != null)
+                            {
+                                await docView.WindowFrame.CloseFrameAsync(FrameCloseOption.NoSave);
+                                await VS.Documents.OpenAsync(newPath);
+                                ScratchFilesToolWindowControl.RefreshAll();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            await ex.LogAsync();
+                        }
                     }
-                }).FireAndForget();
-            }
-            else if (context == "save_as")
-            {
-                ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
-                {
-                    try
-                    {
-                        await SaveAsAsync();
-                    }
-                    catch (Exception ex)
-                    {
-                        await ex.LogAsync();
-                    }
-                }).FireAndForget();
-            }
-        }
+                };
 
-        private async Task ApplyDetectedLanguageAsync(string extension)
-        {
-            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-
-            string oldPath = _docView.Document?.FilePath ?? _filePath;
-
-            // Save unsaved edits to disk before renaming
-            _docView.Document?.Save();
-
-            string newPath = await ScratchFileService.ChangeExtensionAsync(oldPath, extension);
-
-            if (newPath != null && !string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase))
-            {
-                Detach(oldPath);
-
-                // Close the old document tab (file was already saved and renamed on disk)
-                if (_docView.WindowFrame != null)
-                {
-                    await _docView.WindowFrame.CloseFrameAsync(FrameCloseOption.NoSave);
-                }
-
-                await VS.Documents.OpenAsync(newPath);
-
-                ScratchFilesToolWindowControl.RefreshAll();
+                await detectionBar.TryShowInfoBarUIAsync();
             }
         }
 

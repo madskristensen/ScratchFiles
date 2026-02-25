@@ -1,12 +1,12 @@
-using System.IO;
-using System.Threading;
-
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Text;
 
 using ScratchFiles.Services;
 using ScratchFiles.ToolWindows;
+
+using System.IO;
+using System.Threading;
 
 namespace ScratchFiles.Commands
 {
@@ -124,9 +124,10 @@ namespace ScratchFiles.Commands
 
                 if (!string.IsNullOrEmpty(filePath))
                 {
-                    if (!ScratchFileService.IsScratchFile(filePath) && ScratchFileInfoBar.HasInfoBar(filePath))
+                    // If file was saved outside scratch folder, it's no longer a scratch file
+                    // Refresh the tool window to reflect this
+                    if (!ScratchFileService.IsScratchFile(filePath))
                     {
-                        ScratchFileInfoBar.Detach(filePath);
                         ScratchFilesToolWindowControl.RefreshAll();
                     }
                 }
@@ -142,46 +143,46 @@ namespace ScratchFiles.Commands
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            if (fFirstShow != 0)
+            // If not first show and already has infobar, abort early
+            if (fFirstShow == 0)
             {
-                try
+                return VSConstants.S_OK;
+            }
+
+            try
+            {
+                RunningDocumentInfo info = _rdt.GetDocumentInfo(docCookie);
+                string filePath = info.Moniker;
+
+                if (!string.IsNullOrEmpty(filePath) && ScratchFileService.IsScratchFile(filePath))
                 {
-                    RunningDocumentInfo info = _rdt.GetDocumentInfo(docCookie);
-                    string filePath = info.Moniker;
-
-                    if (!string.IsNullOrEmpty(filePath) && ScratchFileService.IsScratchFile(filePath))
+                    ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
                     {
-                        ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+                        try
                         {
-                            try
+                            DocumentView docView = await VS.Documents.GetDocumentViewAsync(filePath);
+
+                            if (docView != null)
                             {
-                                DocumentView docView = await VS.Documents.GetDocumentViewAsync(filePath);
+                                await ScratchFileInfoBar.AttachAsync(docView, filePath);
 
-                                if (docView != null)
+                                ITextBuffer buffer = docView.TextView?.TextBuffer;
+
+                                if (buffer != null)
                                 {
-                                    if (!ScratchFileInfoBar.HasInfoBar(filePath))
-                                    {
-                                        await ScratchFileInfoBar.AttachAsync(docView, filePath);
-                                    }
-
-                                    ITextBuffer buffer = docView.TextView?.TextBuffer;
-
-                                    if (buffer != null)
-                                    {
-                                        ScratchSessionService.TrackDocument(filePath, buffer);
-                                    }
+                                    ScratchSessionService.TrackDocument(filePath, buffer);
                                 }
                             }
-                            catch (Exception ex)
-                            {
-                                await ex.LogAsync();
-                            }
-                        }).FireAndForget();
-                    }
+                        }
+                        catch (Exception ex)
+                        {
+                            await ex.LogAsync();
+                        }
+                    }).FireAndForget();
                 }
-                catch
-                {
-                }
+            }
+            catch
+            {
             }
 
             return VSConstants.S_OK;
@@ -212,8 +213,6 @@ namespace ScratchFiles.Commands
 
                             if (shouldDelete)
                             {
-                                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-                                ScratchFileInfoBar.Detach(filePath);
                                 await Task.Run(() => ScratchFileService.DeleteScratchFile(filePath));
                                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
                                 ScratchFilesToolWindowControl.RefreshAll();
