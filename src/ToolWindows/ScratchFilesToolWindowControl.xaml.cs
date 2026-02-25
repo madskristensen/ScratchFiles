@@ -8,6 +8,7 @@ using ScratchFiles.Services;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -26,6 +27,12 @@ namespace ScratchFiles.ToolWindows
         private readonly Action<Solution> _solutionOpenedHandler;
         private readonly Action _solutionClosedHandler;
 
+        // File system watchers to detect changes on disk
+        private FileSystemWatcher _globalWatcher;
+        private FileSystemWatcher _solutionWatcher;
+        private CancellationTokenSource _refreshDebounce;
+        private readonly object _refreshLock = new object();
+
         public ScratchFilesToolWindowControl()
         {
             InitializeComponent();
@@ -40,29 +47,210 @@ namespace ScratchFiles.ToolWindows
             ThreadHelper.JoinableTaskFactory.StartOnIdle(() =>
             {
                 RefreshTree();
+                SetupFileWatchers();
             }, VsTaskRunContext.UIThreadIdlePriority).FireAndForget();
 
             // Store handlers for later unsubscription
-            _solutionOpenedHandler = (s) => RefreshTree();
-            _solutionClosedHandler = () => RefreshTree();
+            _solutionOpenedHandler = (s) =>
+            {
+                RefreshTree();
+                SetupSolutionWatcher();
+            };
+            _solutionClosedHandler = () =>
+            {
+                DisposeSolutionWatcher();
+                RefreshTree();
+            };
 
             VS.Events.SolutionEvents.OnAfterOpenSolution += _solutionOpenedHandler;
             VS.Events.SolutionEvents.OnAfterCloseSolution += _solutionClosedHandler;
 
-            // Unsubscribe when control is unloaded to prevent memory leaks
+            // Handle load/unload to manage _instance and event subscriptions
+            // Tool windows can be temporarily unloaded when hidden, auto-hidden, or rearranged
+            Loaded += OnLoaded;
             Unloaded += OnUnloaded;
+        }
+
+        private void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            // Restore instance when control is loaded back into visual tree
+            _instance = this;
+
+            // Re-subscribe to solution events if not already subscribed
+            VS.Events.SolutionEvents.OnAfterOpenSolution -= _solutionOpenedHandler;
+            VS.Events.SolutionEvents.OnAfterCloseSolution -= _solutionClosedHandler;
+            VS.Events.SolutionEvents.OnAfterOpenSolution += _solutionOpenedHandler;
+            VS.Events.SolutionEvents.OnAfterCloseSolution += _solutionClosedHandler;
+
+            // Restart file watchers
+            SetupFileWatchers();
         }
 
         private void OnUnloaded(object sender, RoutedEventArgs e)
         {
             VS.Events.SolutionEvents.OnAfterOpenSolution -= _solutionOpenedHandler;
             VS.Events.SolutionEvents.OnAfterCloseSolution -= _solutionClosedHandler;
-            Unloaded -= OnUnloaded;
+
+            // Stop file watchers to prevent unnecessary processing when hidden
+            DisposeFileWatchers();
 
             if (_instance == this)
             {
                 _instance = null;
             }
+        }
+
+        /// <summary>
+        /// Sets up file system watchers for both global and solution scratch folders.
+        /// </summary>
+        private void SetupFileWatchers()
+        {
+            SetupGlobalWatcher();
+            SetupSolutionWatcher();
+        }
+
+        /// <summary>
+        /// Sets up a file system watcher for the global scratch folder.
+        /// </summary>
+        private void SetupGlobalWatcher()
+        {
+            if (_globalWatcher != null)
+            {
+                return;
+            }
+
+            try
+            {
+                string globalFolder = ScratchFileService.GetGlobalScratchFolder();
+                _globalWatcher = CreateWatcher(globalFolder);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to create global watcher: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Sets up a file system watcher for the solution scratch folder.
+        /// </summary>
+        private void SetupSolutionWatcher()
+        {
+            DisposeSolutionWatcher();
+
+            try
+            {
+                string solutionFolder = ScratchFileService.GetSolutionScratchFolder();
+
+                if (solutionFolder != null && Directory.Exists(solutionFolder))
+                {
+                    _solutionWatcher = CreateWatcher(solutionFolder);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to create solution watcher: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Creates a FileSystemWatcher for the specified folder.
+        /// </summary>
+        private FileSystemWatcher CreateWatcher(string folderPath)
+        {
+            var watcher = new FileSystemWatcher(folderPath)
+            {
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite,
+                IncludeSubdirectories = true,
+                EnableRaisingEvents = true
+            };
+
+            watcher.Created += OnFileSystemChanged;
+            watcher.Deleted += OnFileSystemChanged;
+            watcher.Renamed += OnFileSystemChanged;
+            watcher.Changed += OnFileSystemChanged;
+
+            return watcher;
+        }
+
+        /// <summary>
+        /// Handles file system change events with debouncing to avoid rapid refreshes.
+        /// </summary>
+        private void OnFileSystemChanged(object sender, FileSystemEventArgs e)
+        {
+            // Ignore internal files (like .session.json)
+            string fileName = Path.GetFileName(e.FullPath);
+            if (fileName.StartsWith(".", StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            // Debounce rapid changes (e.g., during file saves or batch operations)
+            lock (_refreshLock)
+            {
+                _refreshDebounce?.Cancel();
+                _refreshDebounce = new CancellationTokenSource();
+            }
+
+            CancellationToken token = _refreshDebounce.Token;
+
+            ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+            {
+                try
+                {
+                    // Wait a short delay to batch rapid changes
+                    await Task.Delay(200, token);
+
+                    await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(token);
+                    RefreshTree();
+                }
+                catch (OperationCanceledException)
+                {
+                    // Debounced - a newer refresh is pending
+                }
+            }).FireAndForget();
+        }
+
+        /// <summary>
+        /// Disposes the solution folder watcher.
+        /// </summary>
+        private void DisposeSolutionWatcher()
+        {
+            if (_solutionWatcher != null)
+            {
+                _solutionWatcher.EnableRaisingEvents = false;
+                _solutionWatcher.Created -= OnFileSystemChanged;
+                _solutionWatcher.Deleted -= OnFileSystemChanged;
+                _solutionWatcher.Renamed -= OnFileSystemChanged;
+                _solutionWatcher.Changed -= OnFileSystemChanged;
+                _solutionWatcher.Dispose();
+                _solutionWatcher = null;
+            }
+        }
+
+        /// <summary>
+        /// Disposes all file system watchers.
+        /// </summary>
+        private void DisposeFileWatchers()
+        {
+            lock (_refreshLock)
+            {
+                _refreshDebounce?.Cancel();
+                _refreshDebounce?.Dispose();
+                _refreshDebounce = null;
+            }
+
+            if (_globalWatcher != null)
+            {
+                _globalWatcher.EnableRaisingEvents = false;
+                _globalWatcher.Created -= OnFileSystemChanged;
+                _globalWatcher.Deleted -= OnFileSystemChanged;
+                _globalWatcher.Renamed -= OnFileSystemChanged;
+                _globalWatcher.Changed -= OnFileSystemChanged;
+                _globalWatcher.Dispose();
+                _globalWatcher = null;
+            }
+
+            DisposeSolutionWatcher();
         }
 
         internal ObservableCollection<ScratchNodeBase> RootNodes { get; }
