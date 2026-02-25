@@ -52,11 +52,22 @@ Open via **View > Other Windows > Scratch Files**. The tool window shows all you
 
 Promote any scratch file to a real file. Click **Save As...** in the InfoBar to save a copy to My Documents (or wherever you like). The original scratch file is automatically cleaned up.
 
+### Create scratch file from selection
+
+Select any text in the editor and click the **lightbulb** (or press `Ctrl+.`) to see the **Create scratch file from selection** action. This creates a new scratch file pre-filled with your selection, automatically detecting the language from the source file or content.
+
+<!--! [Lightbulb action for creating scratch from selection](art/suggested-action.png) -->
+
+### Solution Explorer integration
+
+Right-click on the **Solution** node in Solution Explorer to create a new solution-scoped scratch file directly from the context menu.
+
 ## Keyboard shortcuts
 
 | Action | Shortcut |
 |---|---|
-| New scratch file | `Ctrl+N` |
+| New global scratch file | `Ctrl+N` |
+| New solution scratch file | `Ctrl+Alt+N` |
 
 ## Options
 
