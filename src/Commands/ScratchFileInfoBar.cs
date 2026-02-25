@@ -10,9 +10,8 @@ using System.IO;
 namespace ScratchFiles.Commands
 {
     /// <summary>
-    /// Manages the InfoBar shown at the top of scratch file editor windows.
-    /// Provides language selection and Save As actions.
-    /// The InfoBar is only shown for files residing in scratch folders (location is identity).
+    /// Manages the InfoBar shown at the top of scratch file editor windows. Provides language selection and Save As
+    /// actions. The InfoBar is only shown for files residing in scratch folders (location is identity).
     /// </summary>
     internal sealed class ScratchFileInfoBar
     {
@@ -31,8 +30,8 @@ namespace ScratchFiles.Commands
         /// </summary>
         /// <param name="docView">The document view to attach the InfoBar to.</param>
         /// <param name="filePath">
-        /// Optional file path. If not provided, extracted from docView.Document.FilePath.
-        /// Passing this explicitly handles cases where Document is not yet initialized (e.g., .cs files with Roslyn).
+        /// Optional file path. If not provided, extracted from docView.Document.FilePath. Passing this explicitly
+        /// handles cases where Document is not yet initialized (e.g., .cs files with Roslyn).
         /// </param>
         public static async Task AttachAsync(DocumentView docView, string filePath = null)
         {
@@ -62,7 +61,8 @@ namespace ScratchFiles.Commands
 
             string currentExt = Path.GetExtension(_filePath);
             string langDisplay = GetLanguageDisplayName(currentExt);
-            ScratchScope currentScope = ScratchFileService.GetScope(_filePath);
+            string solutionScratchFolder = ScratchFileService.GetSolutionScratchFolderPath();
+            ScratchScope currentScope = ScratchFileService.GetScope(_filePath, solutionScratchFolder);
             string scopeDisplay = currentScope == ScratchScope.Solution ? "Solution" : "Global";
 
             // Build action items - include scope change only if a solution is open
@@ -122,45 +122,15 @@ namespace ScratchFiles.Commands
             switch (context)
             {
                 case "change_language":
-                    ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
-                    {
-                        try
-                        {
-                            await ChangeLanguageAsync();
-                        }
-                        catch (Exception ex)
-                        {
-                            await ex.LogAsync();
-                        }
-                    }).FireAndForget();
+                    ChangeLanguageAsync().FireAndForget();
                     break;
 
                 case "save_as":
-                    ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
-                    {
-                        try
-                        {
-                            await SaveAsAsync();
-                        }
-                        catch (Exception ex)
-                        {
-                            await ex.LogAsync();
-                        }
-                    }).FireAndForget();
+                    SaveAsAsync().FireAndForget();
                     break;
 
                 case "change_scope":
-                    ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
-                    {
-                        try
-                        {
-                            await ChangeScopeAsync();
-                        }
-                        catch (Exception ex)
-                        {
-                            await ex.LogAsync();
-                        }
-                    }).FireAndForget();
+                    ChangeScopeAsync().FireAndForget();
                     break;
             }
         }
@@ -206,7 +176,8 @@ namespace ScratchFiles.Commands
 
             // Use _filePath as fallback if Document is null
             string oldPath = _docView.Document?.FilePath ?? _filePath;
-            ScratchScope currentScope = ScratchFileService.GetScope(oldPath);
+            string solutionScratchFolder = ScratchFileService.GetSolutionScratchFolderPath();
+            ScratchScope currentScope = ScratchFileService.GetScope(oldPath, solutionScratchFolder);
             ScratchScope targetScope = currentScope == ScratchScope.Solution
                 ? ScratchScope.Global
                 : ScratchScope.Solution;

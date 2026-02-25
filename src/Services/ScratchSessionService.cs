@@ -112,6 +112,9 @@ namespace ScratchFiles.Services
                     if (await Task.Run(() => System.IO.File.Exists(filePath)))
                     {
                         await OpenAndTrackFileAsync(filePath);
+
+                        // Yield to allow VS to process other messages between opens
+                        await Task.Yield();
                     }
                 }
                 catch (Exception ex)
