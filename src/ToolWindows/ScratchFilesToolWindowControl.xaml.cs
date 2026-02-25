@@ -416,6 +416,10 @@ namespace ScratchFiles.ToolWindows
             {
                 int contextMenuId = _rightClickedNode.ContextMenuId;
 
+                // Mark handled to prevent WPF from processing the event further,
+                // which could interfere with the context menu or clear _rightClickedNode
+                e.Handled = true;
+
                 ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
                 {
                     try

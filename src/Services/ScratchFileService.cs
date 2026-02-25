@@ -76,7 +76,7 @@ namespace ScratchFiles.Services
         /// Determines whether the given file path resides in a scratch folder.
         /// Excludes internal files like .session.json.
         /// </summary>
-        public static bool IsScratchFile(string filePath)
+        public static bool IsScratchFile(string filePath, string solutionFolder = null)
         {
             if (string.IsNullOrWhiteSpace(filePath))
             {
@@ -98,8 +98,6 @@ namespace ScratchFiles.Services
                 return true;
             }
 
-            string solutionFolder = GetSolutionScratchFolderPath();
-
             return solutionFolder != null
                 && fullPath.StartsWith(solutionFolder, StringComparison.OrdinalIgnoreCase);
         }
@@ -108,11 +106,18 @@ namespace ScratchFiles.Services
         /// Creates a new scratch file in the specified scope and returns its full path.
         /// The file is created with an auto-incremented number (e.g., scratch1.scratch, scratch2.scratch).
         /// </summary>
-        public static string CreateScratchFile(ScratchScope scope)
+        public static string CreateScratchFile(ScratchScope scope, string solutionFolder = null)
         {
-            string folder = scope == ScratchScope.Solution
-                ? GetSolutionScratchFolder() ?? GetGlobalScratchFolder()
-                : GetGlobalScratchFolder();
+            string folder;
+            if (scope == ScratchScope.Solution)
+            {
+                // If solution folder is null (no solution open), fall back to global
+                folder = solutionFolder ?? GetGlobalScratchFolder();
+            }
+            else
+            {
+                folder = GetGlobalScratchFolder();
+            }
 
             string prefix = DefaultPrefix;
             int nextNumber = GetNextNumber(folder, prefix);
@@ -126,9 +131,9 @@ namespace ScratchFiles.Services
         /// <summary>
         /// Creates a new scratch file with initial content and returns its full path.
         /// </summary>
-        public static string CreateScratchFileWithContent(ScratchScope scope, string content)
+        public static string CreateScratchFileWithContent(ScratchScope scope, string content, string solutionFolder = null)
         {
-            string filePath = CreateScratchFile(scope);
+            string filePath = CreateScratchFile(scope, solutionFolder);
             File.WriteAllText(filePath, content ?? string.Empty);
             return filePath;
         }
@@ -155,9 +160,9 @@ namespace ScratchFiles.Services
         /// <summary>
         /// Deletes a scratch file if it exists and resides in a scratch folder.
         /// </summary>
-        public static bool DeleteScratchFile(string filePath)
+        public static bool DeleteScratchFile(string filePath, string solutionFolder = null)
         {
-            if (!IsScratchFile(filePath) || !File.Exists(filePath))
+            if (!IsScratchFile(filePath, solutionFolder) || !File.Exists(filePath))
             {
                 return false;
             }
@@ -192,9 +197,9 @@ namespace ScratchFiles.Services
         /// Renames a scratch file, keeping it in the same folder.
         /// Returns the new full path, or null if the rename failed.
         /// </summary>
-        public static string RenameScratchFile(string oldPath, string newName)
+        public static string RenameScratchFile(string oldPath, string newName, string solutionFolder = null)
         {
-            if (!IsScratchFile(oldPath) || !File.Exists(oldPath))
+            if (!IsScratchFile(oldPath, solutionFolder) || !File.Exists(oldPath))
             {
                 return null;
             }
@@ -215,9 +220,9 @@ namespace ScratchFiles.Services
         /// Changes the file extension of a scratch file on disk.
         /// Returns the new full path.
         /// </summary>
-        public static string ChangeExtension(string filePath, string newExtension)
+        public static string ChangeExtension(string filePath, string newExtension, string solutionFolder = null)
         {
-            if (!IsScratchFile(filePath) || !File.Exists(filePath))
+            if (!IsScratchFile(filePath, solutionFolder) || !File.Exists(filePath))
             {
                 return null;
             }
@@ -243,10 +248,8 @@ namespace ScratchFiles.Services
         /// <summary>
         /// Determines which scope a scratch file belongs to based on its path.
         /// </summary>
-        public static ScratchScope GetScope(string filePath)
+        public static ScratchScope GetScope(string filePath, string solutionFolder = null)
         {
-            string solutionFolder = GetSolutionScratchFolderPath();
-
             if (solutionFolder != null
                 && Path.GetFullPath(filePath).StartsWith(solutionFolder, StringComparison.OrdinalIgnoreCase))
             {
@@ -571,9 +574,9 @@ namespace ScratchFiles.Services
         /// If a file with the same name exists, auto-renames with the next available number.
         /// Returns the new file path, or null if the move failed.
         /// </summary>
-        public static string MoveScratchFile(string sourcePath, string destinationFolder)
+        public static string MoveScratchFile(string sourcePath, string destinationFolder, string solutionFolder = null)
         {
-            if (!IsScratchFile(sourcePath) || !File.Exists(sourcePath))
+            if (!IsScratchFile(sourcePath, solutionFolder) || !File.Exists(sourcePath))
             {
                 return null;
             }
@@ -622,23 +625,30 @@ namespace ScratchFiles.Services
         /// Moves a scratch file to the other scope (Global to Solution or Solution to Global).
         /// Returns the new file path, or null if the move failed or no solution is open.
         /// </summary>
-        public static string MoveToScope(string sourcePath, ScratchScope targetScope)
+        public static string MoveToScope(string sourcePath, ScratchScope targetScope, string solutionFolder = null)
         {
-            if (!IsScratchFile(sourcePath) || !File.Exists(sourcePath))
+            if (!IsScratchFile(sourcePath, solutionFolder) || !File.Exists(sourcePath))
             {
                 return null;
             }
 
-            string targetFolder = targetScope == ScratchScope.Solution
-                ? GetSolutionScratchFolder()
-                : GetGlobalScratchFolder();
+            string targetFolder;
+            if (targetScope == ScratchScope.Solution)
+            {
+                // If solution folder is null (no solution open), cannot move to solution scope
+                targetFolder = solutionFolder;
+            }
+            else
+            {
+                targetFolder = GetGlobalScratchFolder();
+            }
 
             if (targetFolder == null)
             {
                 return null;
             }
 
-            return MoveScratchFile(sourcePath, targetFolder);
+            return MoveScratchFile(sourcePath, targetFolder, solutionFolder);
         }
 
         /// <summary>
@@ -665,7 +675,7 @@ namespace ScratchFiles.Services
         /// Deletes a sub-folder and all its contents if it resides inside a scratch root.
         /// Returns true if the folder was deleted.
         /// </summary>
-        public static bool DeleteFolder(string folderPath)
+        public static bool DeleteFolder(string folderPath, string solutionRoot = null)
         {
             if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
             {
@@ -675,7 +685,6 @@ namespace ScratchFiles.Services
             // Safety: only delete folders inside a scratch root
             string fullPath = Path.GetFullPath(folderPath);
             string globalRoot = GetGlobalScratchFolderPath();
-            string solutionRoot = GetSolutionScratchFolderPath();
 
             bool insideGlobal = fullPath.StartsWith(globalRoot, StringComparison.OrdinalIgnoreCase)
                 && !string.Equals(fullPath, globalRoot, StringComparison.OrdinalIgnoreCase);
@@ -697,7 +706,7 @@ namespace ScratchFiles.Services
         /// Renames a sub-folder inside a scratch root.
         /// Returns the new folder path, or null if the rename failed.
         /// </summary>
-        public static string RenameFolder(string oldPath, string newName)
+        public static string RenameFolder(string oldPath, string newName, string solutionRoot = null)
         {
             if (string.IsNullOrWhiteSpace(oldPath) || !Directory.Exists(oldPath))
             {
@@ -720,7 +729,7 @@ namespace ScratchFiles.Services
         /// Moves a folder and all its contents to a new parent folder.
         /// Returns the new folder path, or null if the move failed.
         /// </summary>
-        public static string MoveFolder(string sourceFolderPath, string destinationParentFolder)
+        public static string MoveFolder(string sourceFolderPath, string destinationParentFolder, string solutionRoot = null)
         {
             if (string.IsNullOrWhiteSpace(sourceFolderPath) || !Directory.Exists(sourceFolderPath))
             {
@@ -735,7 +744,6 @@ namespace ScratchFiles.Services
             // Safety: only move folders inside a scratch root
             string fullSourcePath = Path.GetFullPath(sourceFolderPath);
             string globalRoot = GetGlobalScratchFolderPath();
-            string solutionRoot = GetSolutionScratchFolderPath();
 
             bool sourceInsideGlobal = fullSourcePath.StartsWith(globalRoot, StringComparison.OrdinalIgnoreCase)
                 && !string.Equals(fullSourcePath, globalRoot, StringComparison.OrdinalIgnoreCase);
@@ -827,61 +835,82 @@ namespace ScratchFiles.Services
         /// <summary>
         /// Creates a new scratch file asynchronously, off the UI thread.
         /// </summary>
-        public static Task<string> CreateScratchFileAsync(ScratchScope scope)
+        public static async Task<string> CreateScratchFileAsync(ScratchScope scope)
         {
-            return Task.Run(() => CreateScratchFile(scope));
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            string solutionFolder = scope == ScratchScope.Solution ? GetSolutionScratchFolder() : null;
+
+            return await Task.Run(() => CreateScratchFile(scope, solutionFolder));
         }
 
         /// <summary>
         /// Creates a new scratch file with initial content asynchronously, off the UI thread.
         /// </summary>
-        public static Task<string> CreateScratchFileWithContentAsync(ScratchScope scope, string content)
+        public static async Task<string> CreateScratchFileWithContentAsync(ScratchScope scope, string content)
         {
-            return Task.Run(() => CreateScratchFileWithContent(scope, content));
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            string solutionFolder = scope == ScratchScope.Solution ? GetSolutionScratchFolder() : null;
+
+            return await Task.Run(() => CreateScratchFileWithContent(scope, content, solutionFolder));
         }
 
         /// <summary>
         /// Deletes a scratch file asynchronously, off the UI thread.
         /// </summary>
-        public static Task<bool> DeleteScratchFileAsync(string filePath)
+        public static async Task<bool> DeleteScratchFileAsync(string filePath)
         {
-            return Task.Run(() => DeleteScratchFile(filePath));
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            string solutionFolder = GetSolutionScratchFolderPath();
+
+            return await Task.Run(() => DeleteScratchFile(filePath, solutionFolder));
         }
 
         /// <summary>
         /// Renames a scratch file asynchronously, off the UI thread.
         /// Returns the new full path, or null if the rename failed.
         /// </summary>
-        public static Task<string> RenameScratchFileAsync(string oldPath, string newName)
+        public static async Task<string> RenameScratchFileAsync(string oldPath, string newName)
         {
-            return Task.Run(() => RenameScratchFile(oldPath, newName));
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            string solutionFolder = GetSolutionScratchFolderPath();
+
+            return await Task.Run(() => RenameScratchFile(oldPath, newName, solutionFolder));
         }
 
         /// <summary>
         /// Changes the file extension asynchronously, off the UI thread.
         /// Returns the new full path.
         /// </summary>
-        public static Task<string> ChangeExtensionAsync(string filePath, string newExtension)
+        public static async Task<string> ChangeExtensionAsync(string filePath, string newExtension)
         {
-            return Task.Run(() => ChangeExtension(filePath, newExtension));
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            string solutionFolder = GetSolutionScratchFolderPath();
+
+            return await Task.Run(() => ChangeExtension(filePath, newExtension, solutionFolder));
         }
 
         /// <summary>
         /// Moves a scratch file to a different folder asynchronously, off the UI thread.
         /// Returns the new file path, or null if the move failed.
         /// </summary>
-        public static Task<string> MoveScratchFileAsync(string sourcePath, string destinationFolder)
+        public static async Task<string> MoveScratchFileAsync(string sourcePath, string destinationFolder)
         {
-            return Task.Run(() => MoveScratchFile(sourcePath, destinationFolder));
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            string solutionFolder = GetSolutionScratchFolderPath();
+
+            return await Task.Run(() => MoveScratchFile(sourcePath, destinationFolder, solutionFolder));
         }
 
         /// <summary>
         /// Moves a scratch file to the other scope asynchronously, off the UI thread.
         /// Returns the new file path, or null if the move failed.
         /// </summary>
-        public static Task<string> MoveToScopeAsync(string sourcePath, ScratchScope targetScope)
+        public static async Task<string> MoveToScopeAsync(string sourcePath, ScratchScope targetScope)
         {
-            return Task.Run(() => MoveToScope(sourcePath, targetScope));
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            string solutionFolder = targetScope == ScratchScope.Solution ? GetSolutionScratchFolder() : GetSolutionScratchFolderPath();
+
+            return await Task.Run(() => MoveToScope(sourcePath, targetScope, solutionFolder));
         }
 
         /// <summary>
@@ -895,27 +924,36 @@ namespace ScratchFiles.Services
         /// <summary>
         /// Deletes a folder and all its contents asynchronously, off the UI thread.
         /// </summary>
-        public static Task<bool> DeleteFolderAsync(string folderPath)
+        public static async Task<bool> DeleteFolderAsync(string folderPath)
         {
-            return Task.Run(() => DeleteFolder(folderPath));
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            string solutionRoot = GetSolutionScratchFolderPath();
+
+            return await Task.Run(() => DeleteFolder(folderPath, solutionRoot));
         }
 
         /// <summary>
         /// Renames a folder asynchronously, off the UI thread.
         /// Returns the new folder path, or null if the rename failed.
         /// </summary>
-        public static Task<string> RenameFolderAsync(string oldPath, string newName)
+        public static async Task<string> RenameFolderAsync(string oldPath, string newName)
         {
-            return Task.Run(() => RenameFolder(oldPath, newName));
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            string solutionRoot = GetSolutionScratchFolderPath();
+
+            return await Task.Run(() => RenameFolder(oldPath, newName, solutionRoot));
         }
 
         /// <summary>
         /// Moves a folder asynchronously, off the UI thread.
         /// Returns the new folder path, or null if the move failed.
         /// </summary>
-        public static Task<string> MoveFolderAsync(string sourceFolderPath, string destinationParentFolder)
+        public static async Task<string> MoveFolderAsync(string sourceFolderPath, string destinationParentFolder)
         {
-            return Task.Run(() => MoveFolder(sourceFolderPath, destinationParentFolder));
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            string solutionRoot = GetSolutionScratchFolderPath();
+
+            return await Task.Run(() => MoveFolder(sourceFolderPath, destinationParentFolder, solutionRoot));
         }
 
         #endregion
