@@ -12,9 +12,6 @@ namespace ScratchFiles.Commands
 {
     /// <summary>
     /// Monitors the Running Document Table for save and close events on scratch files.
-    /// - Ctrl+S on a scratch file saves silently in place (no Save As dialog).
-    /// - After Save As moves a file outside a scratch folder, the InfoBar is removed.
-    /// - Closing an empty scratch file auto-deletes it.
     /// </summary>
     internal sealed class DocumentEventHandler : IVsRunningDocTableEvents3, IDisposable
     {
@@ -39,6 +36,7 @@ namespace ScratchFiles.Commands
             var rdt = new RunningDocumentTable(ServiceProvider.GlobalProvider);
             var handler = new DocumentEventHandler(rdt);
             handler._adviseCookie = rdt.Advise(handler);
+
             _instance = handler;
         }
 
@@ -85,25 +83,21 @@ namespace ScratchFiles.Commands
 
                     lock (_ctsLock)
                     {
-                        // Cancel any previous pending auto-detection to avoid races on rapid saves
                         _autoDetectCts?.Cancel();
                         _autoDetectCts?.Dispose();
                         _autoDetectCts = new CancellationTokenSource();
                         token = _autoDetectCts.Token;
                     }
 
-                    // Trigger auto-detection after save for .scratch files
                     ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
                     {
                         try
                         {
-                            // Small delay to let the save complete
                             await Task.Delay(500, token);
                             await ScratchFileInfoBar.TryAutoDetectAsync(filePath);
                         }
                         catch (OperationCanceledException)
                         {
-                            // Expected when a newer save supersedes this one
                         }
                         catch (Exception ex)
                         {
@@ -114,7 +108,6 @@ namespace ScratchFiles.Commands
             }
             catch
             {
-                // Don't block save operations
             }
 
             return VSConstants.S_OK;
@@ -131,8 +124,6 @@ namespace ScratchFiles.Commands
 
                 if (!string.IsNullOrEmpty(filePath))
                 {
-                    // If the file was moved outside the scratch folder via Save As,
-                    // remove the InfoBar and refresh the tool window
                     if (!ScratchFileService.IsScratchFile(filePath) && ScratchFileInfoBar.HasInfoBar(filePath))
                     {
                         ScratchFileInfoBar.Detach(filePath);
@@ -142,7 +133,6 @@ namespace ScratchFiles.Commands
             }
             catch
             {
-                // Don't block save operations
             }
 
             return VSConstants.S_OK;
@@ -169,13 +159,11 @@ namespace ScratchFiles.Commands
 
                                 if (docView != null)
                                 {
-                                    // Attach InfoBar if not already attached
                                     if (!ScratchFileInfoBar.HasInfoBar(filePath))
                                     {
-                                        await ScratchFileInfoBar.AttachAsync(docView);
+                                        await ScratchFileInfoBar.AttachAsync(docView, filePath);
                                     }
 
-                                    // Always track buffer for session persistence (even if InfoBar was already attached)
                                     ITextBuffer buffer = docView.TextView?.TextBuffer;
 
                                     if (buffer != null)
@@ -193,7 +181,6 @@ namespace ScratchFiles.Commands
                 }
                 catch
                 {
-                    // Non-critical
                 }
             }
 
@@ -211,15 +198,12 @@ namespace ScratchFiles.Commands
 
                 if (!string.IsNullOrEmpty(filePath) && ScratchFileService.IsScratchFile(filePath))
                 {
-                    // Untrack the buffer
                     ScratchSessionService.UntrackDocument(filePath);
 
-                    // Move file I/O off the UI thread for empty file deletion
                     ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
                     {
                         try
                         {
-                            // Check file on background thread
                             bool shouldDelete = await Task.Run(() =>
                             {
                                 var fileInfo = new FileInfo(filePath);
@@ -230,10 +214,7 @@ namespace ScratchFiles.Commands
                             {
                                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
                                 ScratchFileInfoBar.Detach(filePath);
-
-                                // Delete on background thread
                                 await Task.Run(() => ScratchFileService.DeleteScratchFile(filePath));
-
                                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
                                 ScratchFilesToolWindowControl.RefreshAll();
                             }
@@ -247,20 +228,17 @@ namespace ScratchFiles.Commands
             }
             catch
             {
-                // Non-critical
             }
 
             return VSConstants.S_OK;
         }
 
-        // Required interface members with default implementations
         public int OnAfterFirstDocumentLock(uint docCookie, uint dwRDTLockType, uint dwReadLocksRemaining, uint dwEditLocksRemaining) => VSConstants.S_OK;
         public int OnBeforeLastDocumentUnlock(uint docCookie, uint dwRDTLockType, uint dwReadLocksRemaining, uint dwEditLocksRemaining) => VSConstants.S_OK;
         public int OnAfterAttributeChange(uint docCookie, uint grfAttribs) => VSConstants.S_OK;
         public int OnAfterAttributeChangeEx(uint docCookie, uint grfAttribs, IVsHierarchy pHierOld, uint itemidOld, string pszMkDocumentOld, IVsHierarchy pHierNew, uint itemidNew, string pszMkDocumentNew) => VSConstants.S_OK;
         public int OnBeforeDocumentWindowShow(uint docCookie, int fFirstShow, IVsWindowFrame pFrame, out int pfCancel) { pfCancel = 0; return OnBeforeDocumentWindowShow(docCookie, fFirstShow, pFrame); }
 
-        // IVsRunningDocTableEvents3-specific
         int IVsRunningDocTableEvents3.OnBeforeSave(uint docCookie) => OnBeforeSave(docCookie);
     }
 }

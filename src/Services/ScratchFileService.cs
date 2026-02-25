@@ -74,10 +74,18 @@ namespace ScratchFiles.Services
 
         /// <summary>
         /// Determines whether the given file path resides in a scratch folder.
+        /// Excludes internal files like .session.json.
         /// </summary>
         public static bool IsScratchFile(string filePath)
         {
             if (string.IsNullOrWhiteSpace(filePath))
+            {
+                return false;
+            }
+
+            // Exclude internal files (files starting with ".")
+            string fileName = Path.GetFileName(filePath);
+            if (fileName.StartsWith(".", StringComparison.Ordinal))
             {
                 return false;
             }
@@ -372,6 +380,7 @@ namespace ScratchFiles.Services
         #region Session File Tracking
 
         private const string SessionFileName = ".session.json";
+        private static readonly object _sessionLock = new object();
 
         /// <summary>
         /// Gets the path to the session file that tracks open scratch files.
@@ -428,12 +437,29 @@ namespace ScratchFiles.Services
         /// </summary>
         public static void AddToSession(string filePath)
         {
-            var currentFiles = new HashSet<string>(GetSessionFiles(), StringComparer.OrdinalIgnoreCase);
-
-            if (currentFiles.Add(filePath))
+            // Run on background thread - no UI thread needed for file I/O
+            // Fire-and-forget is intentional: during VS shutdown, we want this to potentially not complete
+#pragma warning disable VSTHRD110 // Observe result of async calls
+            Task.Run(() =>
+#pragma warning restore VSTHRD110
             {
-                SaveSessionFiles(currentFiles);
-            }
+                try
+                {
+                    lock (_sessionLock)
+                    {
+                        var currentFiles = new HashSet<string>(GetSessionFiles(), StringComparer.OrdinalIgnoreCase);
+
+                        if (currentFiles.Add(filePath))
+                        {
+                            SaveSessionFiles(currentFiles);
+                        }
+                    }
+                }
+                catch
+                {
+                    // Non-critical, ignore errors
+                }
+            });
         }
 
         /// <summary>
@@ -441,12 +467,37 @@ namespace ScratchFiles.Services
         /// </summary>
         public static void RemoveFromSession(string filePath)
         {
-            var currentFiles = new HashSet<string>(GetSessionFiles(), StringComparer.OrdinalIgnoreCase);
-
-            if (currentFiles.Remove(filePath))
+            // Delay removal - gives time for VS to set ShellIsShuttingDown if closing
+#pragma warning disable VSTHRD110 // Observe result of async calls
+            Task.Run(async () =>
+#pragma warning restore VSTHRD110
             {
-                SaveSessionFiles(currentFiles);
-            }
+                try
+                {
+                    // Wait a bit - if VS is shutting down, ShellIsShuttingDown will be true after this delay
+                    await Task.Delay(1000);
+
+                    // Check if VS is shutting down - if so, preserve the session
+                    if (VsShellUtilities.ShellIsShuttingDown)
+                    {
+                        return;
+                    }
+
+                    lock (_sessionLock)
+                    {
+                        var currentFiles = new HashSet<string>(GetSessionFiles(), StringComparer.OrdinalIgnoreCase);
+
+                        if (currentFiles.Remove(filePath))
+                        {
+                            SaveSessionFiles(currentFiles);
+                        }
+                    }
+                }
+                catch
+                {
+                    // Non-critical, ignore errors
+                }
+            });
         }
 
         /// <summary>

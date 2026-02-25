@@ -33,13 +33,25 @@ namespace ScratchFiles.Commands
         /// <summary>
         /// Attaches an InfoBar to the given document view if the file is a scratch file.
         /// </summary>
-        public static async Task AttachAsync(DocumentView docView)
+        /// <param name="docView">The document view to attach the InfoBar to.</param>
+        /// <param name="filePath">
+        /// Optional file path. If not provided, extracted from docView.Document.FilePath.
+        /// Passing this explicitly handles cases where Document is not yet initialized (e.g., .cs files with Roslyn).
+        /// </param>
+        public static async Task AttachAsync(DocumentView docView, string filePath = null)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
 
-            string filePath = docView?.Document?.FilePath;
+            // Use provided filePath, or fall back to extracting from document
+            filePath = filePath ?? docView?.Document?.FilePath;
 
             if (string.IsNullOrEmpty(filePath) || !ScratchFileService.IsScratchFile(filePath))
+            {
+                return;
+            }
+
+            // Ensure we have a valid WindowFrame to attach the InfoBar to
+            if (docView?.WindowFrame == null)
             {
                 return;
             }
