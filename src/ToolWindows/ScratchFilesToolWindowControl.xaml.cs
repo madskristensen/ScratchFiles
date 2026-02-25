@@ -750,7 +750,24 @@ namespace ScratchFiles.ToolWindows
         {
             if (SelectedNode is ScratchFileNode fileNode)
             {
-                VS.Documents.OpenAsync(fileNode.FilePath).FireAndForget();
+                // Check if Alt is held - if so, open to the side
+                bool altPressed = Keyboard.Modifiers.HasFlag(ModifierKeys.Alt);
+
+                ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+                {
+                    DocumentView activeDoc = altPressed
+                        ? await VS.Documents.GetActiveDocumentViewAsync()
+                        : null;
+
+                    DocumentView docView = await VS.Documents.OpenAsync(fileNode.FilePath);
+
+                    // If Alt was held and there was an active document, open to the side
+                    if (docView != null && activeDoc != null)
+                    {
+                        await Commands.NewScratchFileToTheSideCommand.OpenToTheSideAsync();
+                    }
+                }).FireAndForget();
+
                 e.Handled = true;
             }
         }

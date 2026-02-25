@@ -62,12 +62,28 @@ Select any text in the editor and click the **lightbulb** (or press `Ctrl+.`) to
 
 Right-click on the **Solution** node in Solution Explorer to create a new solution-scoped scratch file directly from the context menu.
 
+### Open to the side
+
+Work with scratch files side-by-side with your code using vertical tab groups:
+
+- **Ctrl+Alt+N** — Create a new scratch file and open it in a vertical tab group to the right
+- **Alt+Enter** — Open the selected file in the tool window to the side
+- **Alt+Double-click** — Double-click a file in the tool window while holding Alt to open it to the side
+
+If a tab group already exists, the file opens in the existing group. If no document is currently open, the file opens normally.
+
+![Open to the side](art/open-to-side.png)
+
 ## Keyboard shortcuts
 
 | Action | Shortcut |
 |---|---|
 | New global scratch file | `Ctrl+N` |
-| New solution scratch file | `Ctrl+Alt+N` |
+| New scratch file to the side | `Ctrl+Alt+N` |
+| Open file (tool window) | `Enter` |
+| Open file to the side (tool window) | `Alt+Enter` |
+| Rename (tool window) | `F2` |
+| Delete (tool window) | `Delete` |
 
 ## Options
 

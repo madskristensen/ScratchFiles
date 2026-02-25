@@ -39,11 +39,13 @@ namespace ScratchFiles
         public const int FolderContextMenuEditGroup = 0x0009;
         public const int FolderContextMenuOpenGroup = 0x000A;
         public const int NewGlobalScratchFile = 0x0106;
+        public const int NewScratchFileToTheSide = 0x0107;
         public const int NewSolutionScratchFile = 0x0101;
         public const int ShowToolWindow = 0x0102;
         public const int ToolbarNewGlobal = 0x0103;
         public const int ToolbarOpenFolder = 0x0105;
         public const int ContextOpen = 0x0110;
+        public const int ContextOpenToTheSide = 0x0115;
         public const int ContextRename = 0x0111;
         public const int ContextDelete = 0x0112;
         public const int ContextOpenFolder = 0x0113;

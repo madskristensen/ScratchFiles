@@ -45,7 +45,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Commands\ContextOpenToTheSideCommand.cs" />
     <Compile Include="Commands\DocumentEventHandler.cs" />
+    <Compile Include="Commands\NewScratchFileToTheSideCommand.cs" />
     <Compile Include="Models\ScratchFolderNode.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Commands\ContextOpenCommand.cs" />

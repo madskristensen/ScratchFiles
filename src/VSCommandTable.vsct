@@ -90,6 +90,17 @@
 				</Strings>
 			</Button>
 
+			<!-- New Scratch File To The Side (Ctrl+Alt+N) - opens in vertical tab group -->
+			<Button guid="ScratchFiles" id="NewScratchFileToTheSide" priority="0x0200" type="Button">
+				<Parent guid="ScratchFiles" id="FileMenuGroup"/>
+				<Icon guid="ImageCatalogGuid" id="SplitScreenVertically"/>
+				<CommandFlag>IconIsMoniker</CommandFlag>
+				<Strings>
+					<ButtonText>New Scratch File To The Side</ButtonText>
+					<LocCanonicalName>.ScratchFiles.NewScratchFileToTheSide</LocCanonicalName>
+				</Strings>
+			</Button>
+
 			<!-- New Solution Scratch File (Ctrl+Alt+N) -->
 			<Button guid="ScratchFiles" id="NewSolutionScratchFile" priority="0x0100" type="Button">
 				<Parent guid="ScratchFiles" id="SolutionContextMenuGroup"/>
@@ -143,6 +154,17 @@
 				<Strings>
 					<ButtonText>Open</ButtonText>
 					<LocCanonicalName>.ScratchFiles.ContextOpen</LocCanonicalName>
+				</Strings>
+			</Button>
+
+			<!-- Context menu: Open To The Side (Alt+Enter) - opens in vertical tab group -->
+			<Button guid="ScratchFiles" id="ContextOpenToTheSide" priority="0x0150" type="Button">
+				<Parent guid="ScratchFiles" id="TreeContextMenuGroup"/>
+				<Icon guid="ImageCatalogGuid" id="SplitScreenVertically"/>
+				<CommandFlag>IconIsMoniker</CommandFlag>
+				<Strings>
+					<ButtonText>Open To The Side</ButtonText>
+					<LocCanonicalName>.ScratchFiles.ContextOpenToTheSide</LocCanonicalName>
 				</Strings>
 			</Button>
 
@@ -208,7 +230,11 @@
 	</CommandPlacements>
 
 	<KeyBindings>
+		<!-- Global keybinding for new scratch file to the side -->
+		<KeyBinding guid="ScratchFiles" id="NewScratchFileToTheSide" editor="guidVSStd97" key1="N" mod1="Control Alt"/>
+		<!-- Tool window keybindings -->
 		<KeyBinding guid="ScratchFiles" id="ContextOpen" editor="ScratchFilesToolWindow" key1="VK_RETURN"/>
+		<KeyBinding guid="ScratchFiles" id="ContextOpenToTheSide" editor="ScratchFilesToolWindow" key1="VK_RETURN" mod1="Alt"/>
 		<KeyBinding guid="ScratchFiles" id="ContextRename" editor="ScratchFilesToolWindow" key1="VK_F2"/>
 		<KeyBinding guid="ScratchFiles" id="ContextDelete" editor="ScratchFilesToolWindow" key1="VK_DELETE"/>
 	</KeyBindings>
@@ -234,11 +260,13 @@
 
 			<!-- Commands -->
 			<IDSymbol name="NewGlobalScratchFile" value="0x0106"/>
+			<IDSymbol name="NewScratchFileToTheSide" value="0x0107"/>
 			<IDSymbol name="NewSolutionScratchFile" value="0x0101"/>
 			<IDSymbol name="ShowToolWindow" value="0x0102"/>
 			<IDSymbol name="ToolbarNewGlobal" value="0x0103"/>
 			<IDSymbol name="ToolbarOpenFolder" value="0x0105"/>
 			<IDSymbol name="ContextOpen" value="0x0110"/>
+			<IDSymbol name="ContextOpenToTheSide" value="0x0115"/>
 			<IDSymbol name="ContextRename" value="0x0111"/>
 			<IDSymbol name="ContextDelete" value="0x0112"/>
 			<IDSymbol name="ContextOpenFolder" value="0x0113"/>
