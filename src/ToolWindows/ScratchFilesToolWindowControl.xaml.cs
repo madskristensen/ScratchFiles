@@ -607,7 +607,11 @@ namespace ScratchFiles.ToolWindows
             ScratchTree.ItemsSource = RootNodes;
 
             // Wire events
-            ScratchTree.SelectedItemChanged += (s, e) => _selectedNode = e.NewValue as ScratchNodeBase;
+            ScratchTree.SelectedItemChanged += (s, e) =>
+            {
+                _selectedNode = e.NewValue as ScratchNodeBase;
+                _rightClickedNode = null; // Clear right-clicked node when selection changes
+            };
             ScratchTree.PreviewMouseRightButtonDown += ScratchTree_PreviewMouseRightButtonDown;
             ScratchTree.PreviewMouseRightButtonUp += ScratchTree_PreviewMouseRightButtonUp;
             ScratchTree.MouseDoubleClick += ScratchTree_MouseDoubleClick;

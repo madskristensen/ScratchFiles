@@ -61,6 +61,13 @@ namespace ScratchFiles.Commands
                         }
                     }
 
+                    // Close the document if it's open in the editor
+                    DocumentView docView = await VS.Documents.GetDocumentViewAsync(deletedPath);
+                    if (docView?.WindowFrame != null)
+                    {
+                        await docView.WindowFrame.CloseFrameAsync(FrameCloseOption.NoSave);
+                    }
+
                     // VS will dispose the InfoBar automatically when the document is closed
                     await ScratchFileService.DeleteScratchFileAsync(fileNode.FilePath);
 
@@ -101,6 +108,19 @@ namespace ScratchFiles.Commands
                         else if (parent is ScratchFolderNode parentFolder)
                         {
                             pathToSelect = parentFolder.FolderPath;
+                        }
+                    }
+
+                    // Close all open documents inside the folder being deleted
+                    if (Directory.Exists(folderNode.FolderPath))
+                    {
+                        foreach (string filePath in Directory.GetFiles(folderNode.FolderPath, "*", SearchOption.AllDirectories))
+                        {
+                            DocumentView docView = await VS.Documents.GetDocumentViewAsync(filePath);
+                            if (docView?.WindowFrame != null)
+                            {
+                                await docView.WindowFrame.CloseFrameAsync(FrameCloseOption.NoSave);
+                            }
                         }
                     }
 
