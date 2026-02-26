@@ -42,10 +42,10 @@ namespace ScratchFiles.Services
             }),
             new LanguageRule("SQL", ".sql", new[]
             {
-                @"(?i)^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE\s+TABLE|ALTER\s+TABLE|DROP\s+TABLE)\s",
-                @"(?i)^\s*DECLARE\s+@",
-                @"(?i)^\s*EXEC(\s+|UTE\s+)",
-            }),
+                @"^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE\s+TABLE|ALTER\s+TABLE|DROP\s+TABLE)\s",
+                @"^\s*DECLARE\s+@",
+                @"^\s*EXEC(\s+|UTE\s+)",
+            }, RegexOptions.IgnoreCase),
             new LanguageRule("PowerShell", ".ps1", new[]
             {
                 @"^\s*\$\w+\s*=",
@@ -171,38 +171,28 @@ namespace ScratchFiles.Services
 
     internal sealed class LanguageRule
     {
-        private readonly string[] _patterns;
-        private Regex[] _compiledPatterns;
-
         public LanguageRule(string languageName, string extension, string[] patterns)
+            : this(languageName, extension, patterns, RegexOptions.None)
+        {
+        }
+
+        public LanguageRule(string languageName, string extension, string[] patterns, RegexOptions additionalOptions)
         {
             LanguageName = languageName;
             Extension = extension;
-            _patterns = patterns;
+
+            // Pre-compile patterns at construction time to avoid compilation overhead during detection
+            RegexOptions options = RegexOptions.Compiled | RegexOptions.Multiline | additionalOptions;
+            CompiledPatterns = new Regex[patterns.Length];
+            for (int i = 0; i < patterns.Length; i++)
+            {
+                CompiledPatterns[i] = new Regex(patterns[i], options);
+            }
         }
 
         public string LanguageName { get; }
         public string Extension { get; }
-
-        /// <summary>
-        /// Lazily compiles regex patterns on first access to avoid startup latency.
-        /// </summary>
-        public Regex[] CompiledPatterns
-        {
-            get
-            {
-                if (_compiledPatterns == null)
-                {
-                    var compiled = new Regex[_patterns.Length];
-                    for (int i = 0; i < _patterns.Length; i++)
-                    {
-                        compiled[i] = new Regex(_patterns[i], RegexOptions.Compiled | RegexOptions.Multiline);
-                    }
-                    _compiledPatterns = compiled;
-                }
-                return _compiledPatterns;
-            }
-        }
+        public Regex[] CompiledPatterns { get; }
     }
 
     internal sealed class LanguageDetectionResult
