@@ -3,6 +3,7 @@ name: "Build"
 permissions:
   contents: read
   checks: write
+  security-events: write
 
 on:
   push:
@@ -109,3 +110,37 @@ jobs:
           tag_name: ${{ needs.build.outputs.version }}
           files: |
             **/*.vsix
+
+  analyze:
+    name: Analyze (csharp)
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET build dependencies
+      uses: timheuer/bootstrap-dotnet@v1
+      with:
+        nuget: 'false'
+        sdk: 'false'
+        msbuild: 'true'
+
+    - name: Setup NuGet
+      uses: nuget/setup-nuget@v2
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: csharp
+        build-mode: manual
+
+    - name: Restore NuGet packages
+      run: nuget restore
+
+    - name: Build
+      run: msbuild /v:m /p:Configuration=Release
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:csharp"
