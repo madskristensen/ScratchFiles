@@ -2,6 +2,7 @@
 name: "Build"
 permissions:
   contents: read
+  checks: write
 
 on:
   push:
@@ -56,12 +57,13 @@ jobs:
     - name: Run tests
       run: dotnet vstest /_built/*.Test.dll --logger:"trx;LogFileName=test-results.trx"
 
-    - name: Upload test results
-      uses: actions/upload-artifact@v4
+    - name: Report test results
+      uses: dorny/test-reporter@v1
       if: always()
       with:
-        name: test-results
+        name: Test Results
         path: '**/test-results.trx'
+        reporter: dotnet-trx
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
