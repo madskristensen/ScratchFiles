@@ -26,6 +26,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
 
     - name: Setup .NET build dependencies
       uses: timheuer/bootstrap-dotnet@v1
@@ -34,14 +36,11 @@ jobs:
         sdk: 'false'
         msbuild: 'true'
 
-    - name: Setup NuGet
-      uses: nuget/setup-nuget@v2
-
     - name: Cache NuGet packages
       uses: actions/cache@v4
       with:
         path: ~/.nuget/packages
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.sln', '**/*.csproj', '**/packages.config', '**/packages.lock.json', '**/nuget.config') }}
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.slnx', '**/*.sln', '**/*.csproj', '**/packages.config', '**/packages.lock.json', '**/nuget.config') }}
         restore-keys: |
           ${{ runner.os }}-nuget-
 
@@ -52,6 +51,9 @@ jobs:
         manifest-file: ${{ env.VsixManifestPath }}
         vsix-token-source-file: ${{ env.VsixManifestSourcePath }}
 
+    - name: Restore NuGet packages
+      run: msbuild /v:m /t:restore
+
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
@@ -59,7 +61,7 @@ jobs:
         build-mode: manual
 
     - name: Build
-      run: msbuild /v:m -restore /p:OutDir=\_built
+      run: msbuild /v:m /p:OutDir=\_built
 
     - name: Run tests
       run: dotnet vstest /_built/*.Test.dll --logger:"trx;LogFileName=test-results.trx"
@@ -92,6 +94,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Download Package artifact
         uses: actions/download-artifact@v4
