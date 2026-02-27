@@ -12,9 +12,28 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  increment-version:
+    name: Increment VSIX version
+    runs-on: windows-latest
+    env:
+      VsixManifestPath: src\source.extension.vsixmanifest
+      VsixManifestSourcePath: src\source.extension.cs
     outputs:
       version: ${{ steps.vsix_version.outputs.version-number }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Increment VSIX version
+      id: vsix_version
+      uses: timheuer/vsix-version-stamp@v2
+      with:
+        manifest-file: ${{ env.VsixManifestPath }}
+        vsix-token-source-file: ${{ env.VsixManifestSourcePath }}
+
+  build:
     name: Build
     runs-on: windows-latest
     env:
@@ -75,7 +94,7 @@ jobs:
 
   publish:
     if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
-    needs: build
+    needs: [increment-version, build]
     runs-on: windows-latest
     permissions:
       contents: write
@@ -108,8 +127,8 @@ jobs:
         id: tag_release
         uses: softprops/action-gh-release@v2
         with:
-          body: release ${{ needs.build.outputs.version }}
+          body: release ${{ needs.increment-version.outputs.version }}
           generate_release_notes: true
-          tag_name: ${{ needs.build.outputs.version }}
+          tag_name: ${{ needs.increment-version.outputs.version }}
           files: |
             **/*.vsix
