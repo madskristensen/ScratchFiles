@@ -61,7 +61,7 @@ body:
     id: error-message
     attributes:
       label: Error message / call stack
-      description: If applicable, paste any error messages or stack traces here.
+      description: If applicable, paste any error messages or stack traces here. You can find call stacks in the Output Window under the **Extensions** pane.
       render: text
     validations:
       required: false
