@@ -104,8 +104,52 @@ namespace ScratchFiles.Services
                 solutionFolder = GetSolutionScratchFolderPath();
             }
 
-            return solutionFolder != null
-                && fullPath.StartsWith(solutionFolder, StringComparison.OrdinalIgnoreCase);
+            if (solutionFolder != null
+                && fullPath.StartsWith(solutionFolder, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            foreach (string customFolder in GetCustomScratchFolders())
+            {
+                if (fullPath.StartsWith(customFolder, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Returns the user-configured custom scratch folder roots.
+        /// Folders are normalized to full paths; non-existent or unreadable entries are skipped.
+        /// </summary>
+        public static IReadOnlyList<string> GetCustomScratchFolders()
+        {
+            GeneralOptions options = GeneralOptions.Instance;
+
+            if (options == null)
+            {
+                return Array.Empty<string>();
+            }
+
+            var result = new List<string>();
+
+            foreach (string folder in options.GetCustomFolders())
+            {
+                try
+                {
+                    string full = Path.GetFullPath(folder);
+                    result.Add(full);
+                }
+                catch
+                {
+                    // Skip invalid path entries
+                }
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -158,6 +202,14 @@ namespace ScratchFiles.Services
             if (solutionFolder != null && Directory.Exists(solutionFolder))
             {
                 files.AddRange(GetFilesFromFolder(solutionFolder, ScratchScope.Solution));
+            }
+
+            foreach (string customFolder in GetCustomScratchFolders())
+            {
+                if (Directory.Exists(customFolder))
+                {
+                    files.AddRange(GetFilesFromFolder(customFolder, ScratchScope.Global));
+                }
             }
 
             return files;
@@ -677,7 +729,18 @@ namespace ScratchFiles.Services
                 && fullPath.StartsWith(solutionRoot, StringComparison.OrdinalIgnoreCase)
                 && !string.Equals(fullPath, solutionRoot, StringComparison.OrdinalIgnoreCase);
 
-            if (!insideGlobal && !insideSolution)
+            bool insideCustom = false;
+            foreach (string customRoot in GetCustomScratchFolders())
+            {
+                if (fullPath.StartsWith(customRoot, StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(fullPath, customRoot, StringComparison.OrdinalIgnoreCase))
+                {
+                    insideCustom = true;
+                    break;
+                }
+            }
+
+            if (!insideGlobal && !insideSolution && !insideCustom)
             {
                 return false;
             }
@@ -736,7 +799,18 @@ namespace ScratchFiles.Services
                 && fullSourcePath.StartsWith(solutionRoot, StringComparison.OrdinalIgnoreCase)
                 && !string.Equals(fullSourcePath, solutionRoot, StringComparison.OrdinalIgnoreCase);
 
-            if (!sourceInsideGlobal && !sourceInsideSolution)
+            bool sourceInsideCustom = false;
+            foreach (string customRoot in GetCustomScratchFolders())
+            {
+                if (fullSourcePath.StartsWith(customRoot, StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(fullSourcePath, customRoot, StringComparison.OrdinalIgnoreCase))
+                {
+                    sourceInsideCustom = true;
+                    break;
+                }
+            }
+
+            if (!sourceInsideGlobal && !sourceInsideSolution && !sourceInsideCustom)
             {
                 return null;
             }

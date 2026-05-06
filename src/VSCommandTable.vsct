@@ -213,6 +213,30 @@
 					<LocCanonicalName>.ScratchFiles.ContextAddFolder</LocCanonicalName>
 				</Strings>
 			</Button>
+
+			<!-- Toolbar: Add Custom Folder -->
+			<Button guid="ScratchFiles" id="ToolbarAddCustomFolder" priority="0x0200" type="Button">
+				<Parent guid="ScratchFiles" id="ToolWindowToolbarActionsGroup"/>
+				<Icon guid="ImageCatalogGuid" id="AddFolder"/>
+				<CommandFlag>IconIsMoniker</CommandFlag>
+				<Strings>
+					<ButtonText>Add Custom Folder</ButtonText>
+					<LocCanonicalName>.ScratchFiles.ToolbarAddCustomFolder</LocCanonicalName>
+				</Strings>
+			</Button>
+
+			<!-- Folder context menu: Remove Custom Folder (only visible on custom roots) -->
+			<Button guid="ScratchFiles" id="ContextRemoveCustomFolder" priority="0x0300" type="Button">
+				<Parent guid="ScratchFiles" id="FolderContextMenuEditGroup"/>
+				<Icon guid="ImageCatalogGuid" id="RemoveLink"/>
+				<CommandFlag>IconIsMoniker</CommandFlag>
+				<CommandFlag>DynamicVisibility</CommandFlag>
+				<CommandFlag>DefaultInvisible</CommandFlag>
+				<Strings>
+					<ButtonText>Remove from Scratch Files</ButtonText>
+					<LocCanonicalName>.ScratchFiles.ContextRemoveCustomFolder</LocCanonicalName>
+				</Strings>
+			</Button>
 		</Buttons>
 	</Commands>
 
@@ -240,6 +264,8 @@
 	</KeyBindings>
 
 	<Symbols>
+		<GuidSymbol name="ScratchFilesToolWindow" value="{a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d}"/>
+		
 		<GuidSymbol name="ScratchFiles" value="{04fc2f76-aec6-4077-aeff-121520f4dcfa}">
 			<!-- Menus -->
 			<IDSymbol name="ToolWindowToolbar" value="0x0010"/>
@@ -271,7 +297,8 @@
 			<IDSymbol name="ContextDelete" value="0x0112"/>
 			<IDSymbol name="ContextOpenFolder" value="0x0113"/>
 			<IDSymbol name="ContextAddFolder" value="0x0114"/>
-		</GuidSymbol>
-		<GuidSymbol name="ScratchFilesToolWindow" value="{a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d}"/>
+			<IDSymbol name="ContextRemoveCustomFolder" value="0x0117"/>
+			<IDSymbol name="ToolbarAddCustomFolder" value="0x0118"/>
+		</GuidSymbol>		
 	</Symbols>
 </CommandTable>

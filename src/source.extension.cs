@@ -12,7 +12,7 @@ namespace ScratchFiles
         public const string Name = "Scratch Files";
         public const string Description = @"Quick-access scratch files for notes and code drafts — global or per-solution — with auto language detection.";
         public const string Language = "en-US";
-        public const string Version = "1.0.900";
+        public const string Version = "1.0.901";
         public const string Author = "Mads Kristensen";
         public const string Tags = "notes, new, files";
         public const bool IsPreview = false;

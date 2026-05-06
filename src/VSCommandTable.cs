@@ -13,11 +13,11 @@ namespace ScratchFiles
     /// </summary>
     internal sealed partial class PackageGuids
     {
-        public const string ScratchFilesString = "04fc2f76-aec6-4077-aeff-121520f4dcfa";
-        public static Guid ScratchFiles = new Guid(ScratchFilesString);
-
         public const string ScratchFilesToolWindowString = "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d";
         public static Guid ScratchFilesToolWindow = new Guid(ScratchFilesToolWindowString);
+
+        public const string ScratchFilesString = "04fc2f76-aec6-4077-aeff-121520f4dcfa";
+        public static Guid ScratchFiles = new Guid(ScratchFilesString);
     }
 
     /// <summary>
@@ -50,5 +50,7 @@ namespace ScratchFiles
         public const int ContextDelete = 0x0112;
         public const int ContextOpenFolder = 0x0113;
         public const int ContextAddFolder = 0x0114;
+        public const int ContextRemoveCustomFolder = 0x0117;
+        public const int ToolbarAddCustomFolder = 0x0118;
     }
 }

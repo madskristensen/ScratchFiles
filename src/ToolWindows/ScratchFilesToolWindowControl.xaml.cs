@@ -30,6 +30,7 @@ namespace ScratchFiles.ToolWindows
         // File system watchers to detect changes on disk
         private FileSystemWatcher _globalWatcher;
         private FileSystemWatcher _solutionWatcher;
+        private readonly List<FileSystemWatcher> _customWatchers = new List<FileSystemWatcher>();
         private CancellationTokenSource _refreshDebounce;
         private readonly object _refreshLock = new object();
         private string _pendingSelectionPath;
@@ -108,6 +109,52 @@ namespace ScratchFiles.ToolWindows
         {
             SetupGlobalWatcher();
             SetupSolutionWatcher();
+            SetupCustomWatchers();
+        }
+
+        /// <summary>
+        /// Sets up a file system watcher for each user-configured custom folder.
+        /// </summary>
+        private void SetupCustomWatchers()
+        {
+            DisposeCustomWatchers();
+
+            foreach (string folder in ScratchFileService.GetCustomScratchFolders())
+            {
+                try
+                {
+                    if (Directory.Exists(folder))
+                    {
+                        _customWatchers.Add(CreateWatcher(folder));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to create custom watcher for '{folder}': {ex.Message}");
+                }
+            }
+        }
+
+        private void DisposeCustomWatchers()
+        {
+            foreach (FileSystemWatcher watcher in _customWatchers)
+            {
+                try
+                {
+                    watcher.EnableRaisingEvents = false;
+                    watcher.Created -= OnFileSystemChanged;
+                    watcher.Deleted -= OnFileSystemChanged;
+                    watcher.Renamed -= OnFileSystemChanged;
+                    watcher.Changed -= OnFileSystemChanged;
+                    watcher.Dispose();
+                }
+                catch
+                {
+                    // Ignore disposal errors
+                }
+            }
+
+            _customWatchers.Clear();
         }
 
         /// <summary>
@@ -253,6 +300,7 @@ namespace ScratchFiles.ToolWindows
             }
 
             DisposeSolutionWatcher();
+            DisposeCustomWatchers();
         }
 
         internal ObservableCollection<ScratchNodeBase> RootNodes { get; }
@@ -339,6 +387,11 @@ namespace ScratchFiles.ToolWindows
             {
                 _solutionWatcher.EnableRaisingEvents = false;
             }
+
+            foreach (FileSystemWatcher watcher in _customWatchers)
+            {
+                watcher.EnableRaisingEvents = false;
+            }
         }
 
         /// <summary>
@@ -354,6 +407,11 @@ namespace ScratchFiles.ToolWindows
             if (_solutionWatcher != null)
             {
                 _solutionWatcher.EnableRaisingEvents = true;
+            }
+
+            foreach (FileSystemWatcher watcher in _customWatchers)
+            {
+                watcher.EnableRaisingEvents = true;
             }
         }
 
@@ -644,6 +702,28 @@ namespace ScratchFiles.ToolWindows
                 PopulateFolder(solutionGroup, solutionFolder, ScratchScope.Solution);
                 RootNodes.Add(solutionGroup);
             }
+
+            // Custom folder groups (user-added via Tools > Options or toolbar)
+            foreach (string customFolder in ScratchFileService.GetCustomScratchFolders())
+            {
+                string label = Path.GetFileName(customFolder.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+                if (string.IsNullOrEmpty(label))
+                {
+                    label = customFolder;
+                }
+
+                var customGroup = new ScratchGroupNode(label, ScratchScope.Global, customFolder, isCustom: true);
+
+                if (Directory.Exists(customFolder))
+                {
+                    PopulateFolder(customGroup, customFolder, ScratchScope.Global);
+                }
+
+                RootNodes.Add(customGroup);
+            }
+
+            // Refresh watchers for custom folders (list may have changed)
+            SetupCustomWatchers();
 
             // Show/hide empty state
             IReadOnlyList<ScratchFileInfo> allFiles = ScratchFileService.GetAllScratchFiles();
