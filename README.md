@@ -31,12 +31,17 @@ Click **Change Language** in the InfoBar to choose from every file type register
 
 ![Language picker dialog](art/language-selector.png)
 
-### Global and solution-scoped files
+### Global, solution, and custom folders
 
 - **Global scratch files** are stored in `%APPDATA%\ScratchFiles` and available across all sessions.
 - **Solution scratch files** are stored in `.vs\ScratchFiles` within your solution directory and travel with the solution.
+- **Custom folders** let you add any folder on disk as a root in the tool window - useful for surfacing existing notes folders, shared snippet libraries, or per-project working directories alongside Global and Solution.
 
 New files are created in the Global scope by default. Use **Move to Solution** or **Move to Global** in the InfoBar to change the scope of any file.
+
+#### Adding and removing custom folders
+
+Click **Add Custom Folder** in the Scratch Files tool window toolbar to pick any folder on disk - it appears as a new root node alongside Global and Solution. Custom folders are persisted in your user options and shown across all sessions. To remove one, right-click the custom folder root and choose **Remove Custom Folder**. The folder and its contents are not deleted from disk.
 
 ![Tool window showing global and solution files](art/toolwindow.png)
 
