@@ -1,7 +1,9 @@
+using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Text;
 
 using System.Collections.Concurrent;
+using System.IO;
 using System.Threading;
 
 namespace ScratchFiles.Services
@@ -9,8 +11,9 @@ namespace ScratchFiles.Services
     /// <summary>
     /// Manages scratch file auto-save and session persistence.
     /// - Tracks open scratch files in a session file
-    /// - Auto-saves content to disk (debounced)
-    /// - Re-marks as dirty to maintain "unsaved" appearance
+    /// - Auto-saves dirty content to disk (debounced)
+    /// - Suppresses spurious "file changed externally" prompts caused by
+    ///   post-save activity from other extensions, antivirus, or sync clients
     /// - Restores open files on VS startup
     /// </summary>
     internal static class ScratchSessionService
@@ -196,10 +199,66 @@ namespace ScratchFiles.Services
             {
                 DocumentView docView = await VS.Documents.GetDocumentViewAsync(filePath);
 
-                if (docView?.Document != null)
+                if (docView?.Document == null || docView.TextBuffer == null)
                 {
-                    // Save through VS's document system
+                    return;
+                }
+
+                // Skip if the buffer is in the middle of an edit (e.g. another
+                // extension is mutating it). Saving mid-edit can produce a
+                // snapshot that doesn't match the buffer afterwards, which
+                // some watchers interpret as an external change.
+                if (docView.TextBuffer.EditInProgress)
+                {
+                    return;
+                }
+
+                // Only save when actually dirty. Re-saving a clean document
+                // bumps the file timestamp for no reason and can race with
+                // post-save activity (HTML preview generation, AV scanners,
+                // OneDrive, etc.) that then trips VS's external-change check.
+                ITextDocument textDoc;
+                docView.TextBuffer.Properties.TryGetProperty(typeof(ITextDocument), out textDoc);
+
+                if (textDoc != null && !textDoc.IsDirty)
+                {
+                    return;
+                }
+
+                IVsFileChangeEx fileChange = await VS.GetServiceAsync<SVsFileChangeEx, IVsFileChangeEx>();
+
+                // Tell VS to ignore disk-change notifications for this file
+                // while we save. This prevents transient timestamp/content
+                // diffs (BOM, CRLF normalization, post-save extensions) from
+                // surfacing as a "file changed externally" prompt.
+                fileChange?.IgnoreFile(0, filePath, 1);
+
+                try
+                {
                     docView.Document.Save();
+                }
+                finally
+                {
+                    fileChange?.IgnoreFile(0, filePath, 0);
+
+                    // Re-sync VS's last-known timestamp with what's now on
+                    // disk. Without this, anything that touches the file
+                    // after our save (antivirus, sync clients, MDE2's TOC
+                    // rewrite, etc.) can make the next user edit trigger
+                    // the reload prompt.
+                    try
+                    {
+                        if (File.Exists(filePath))
+                        {
+                            DateTime stamp = File.GetLastWriteTime(filePath);
+                            docView.Document.UpdateDirtyState(false, stamp);
+                            fileChange?.SyncFile(filePath);
+                        }
+                    }
+                    catch (Exception syncEx)
+                    {
+                        await syncEx.LogAsync();
+                    }
                 }
             }
             catch (Exception ex)
